@@ -18,7 +18,7 @@ fi
 # Ensure required system packages
 echo "[*] Installing required packages"
 apt-get update -qq
-apt-get install -y -qq curl sudo podman jq envsubst git
+apt-get install -y -qq curl sudo podman jq gettext-base git
 
 # === Interactive Config Generation ===
 echo "[*] Generating installer config..."
