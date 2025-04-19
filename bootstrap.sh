@@ -60,7 +60,7 @@ systemctl enable --now podman.socket
 
 # === Clone repo ===
 echo "[*] Cloning ZTCL repo to $INSTALLER_PATH"
-git clone https://github.com/your-org/ztcl-panel.git "$INSTALLER_PATH"
+git clone https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git "$INSTALLER_PATH"
 cd "$INSTALLER_PATH"
 git checkout "$ZTCL_VERSION"
 
