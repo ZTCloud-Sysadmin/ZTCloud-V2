@@ -156,3 +156,48 @@ find "$TEMPLATE_DIR" -type f -name "*.template*" | while read -r template; do
 done
 
 echo "[*] Template rendering complete ✅"
+
+
+# ===========================
+# Verify Rendered Files Exist
+# ===========================
+echo "[*] Verifying required rendered files..."
+
+REQUIRED_RENDERED_FILES=(
+  "$DATA_PATH/coredns/Corefile"
+  "$DATA_PATH/caddy/Caddyfile.json"
+  "$DATA_PATH/headscale/config.yaml"
+  "$DATA_PATH/headscale/derpmap.json"
+)
+
+missing=0
+for file in "${REQUIRED_RENDERED_FILES[@]}"; do
+  if [[ ! -f "$file" ]]; then
+    echo "[FAIL] Missing rendered config file: $file"
+    missing=1
+  else
+    echo "[OK] Found: $file"
+  fi
+done
+
+if [[ "$missing" -eq 1 ]]; then
+  echo "[!] One or more config files are missing. Aborting launch."
+  exit 1
+fi
+
+# ===========================
+# Launch with Podman Compose
+# ===========================
+echo "[*] All config files found. Launching stack with Podman Compose..."
+
+COMPOSE_FILE="$INSTALLER_PATH/install/config/ztcloud-compose.yaml"
+
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+  echo "[FAIL] Compose file not found at $COMPOSE_FILE"
+  exit 1
+fi
+
+# Use podman-compose to bring everything up
+podman-compose -f "$COMPOSE_FILE" up -d
+
+echo "[*] Stack launched successfully ✅"
