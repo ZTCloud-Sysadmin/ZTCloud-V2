@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# Ensure PATH includes pipx-installed binaries
+export PATH="$PATH:/usr/local/bin:/root/.local/bin"
+
 # Load config
 CONFIG_FILE="$(dirname "$0")/config.sh"
 if [[ -f "$CONFIG_FILE" ]]; then

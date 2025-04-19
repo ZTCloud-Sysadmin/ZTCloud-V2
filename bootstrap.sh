@@ -23,7 +23,7 @@ apt-get install -y -qq curl sudo podman jq gettext-base git
 echo "[*] Installing podman-compose via pipx"
 apt-get install -y -qq pipx
 pipx ensurepath
-export PATH="$PATH:/usr/local/bin"
+export PATH="$PATH:/usr/local/bin:/root/.local/bin"
 pipx install podman-compose
 
 # === Interactive Config Input ===
@@ -46,6 +46,11 @@ if ! id "$SYSTEM_USERNAME" &>/dev/null; then
   echo "[*] Creating system user $SYSTEM_USERNAME"
   useradd -m -s /bin/bash "$SYSTEM_USERNAME"
 fi
+
+# Ensure pipx path is available for the system user
+echo "[*] Ensuring /usr/local/bin is in $SYSTEM_USERNAME's PATH"
+echo 'export PATH="$PATH:/usr/local/bin:/root/.local/bin:$PATH"' >> "/home/$SYSTEM_USERNAME/.profile"
+chown "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "/home/$SYSTEM_USERNAME/.profile"
 
 # === Clone repo ===
 echo "[*] Cloning ZTCL repo (branch: $ZTCL_BRANCH) to $INSTALLER_PATH"
@@ -85,11 +90,6 @@ apt-get install -y -qq dbus-x11
 
 # Enable Podman socket
 systemctl enable --now podman.socket
-
-# Ensure pipx path is available for the system user
-echo "[*] Ensuring /usr/local/bin is in $SYSTEM_USERNAME's PATH"
-echo 'export PATH="$PATH:/usr/local/bin:/root/.local/bin:$PATH"' >> "/home/$SYSTEM_USERNAME/.profile"
-chown "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "/home/$SYSTEM_USERNAME/.profile"
 
 # === Continue to install.sh as the system user (with full login shell) ===
 echo "[*] Handing over to install.sh"
