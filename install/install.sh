@@ -133,19 +133,20 @@ if [[ "$missing" -eq 1 ]]; then
   exit 1
 fi
 
+# Define filename → target subdir map
+declare -A TEMPLATE_TARGETS=(
+  [Caddyfile.template.json]="caddy"
+  [Corefile.template]="coredns"
+  [headscale.config.template.yaml]="headscale"
+  [derpmap.template.json]="headscale"
+  [example_intergration.sh.template]="utils"
+)
+
 # Render templates
 find "$TEMPLATE_DIR" -type f -name "*.template*" | while read -r template; do
   filename="$(basename "$template")"
   rendered_name="${filename/.template/}"  # Strip `.template` from name
-
-  # Determine target subdir by file
-  case "$rendered_name" in
-    Caddyfile.json)       subdir="caddy" ;;
-    Corefile)             subdir="coredns" ;;
-    config.yaml|derpmap.json) subdir="headscale" ;;
-    *.sh)                 subdir="utils" ;;
-    *)                    subdir="misc" ;;
-  esac
+  subdir="${TEMPLATE_TARGETS[$filename]:-misc}"
 
   output_dir="$OUTPUT_BASE/$subdir"
   output_path="$output_dir/$rendered_name"
