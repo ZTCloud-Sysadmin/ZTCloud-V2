@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  headscale:
+    image: ${HEADSCALE_IMAGE:-headscale/headscale:stable}
+    container_name: ${HEADSCALE_NAME:-headscale}
+    entrypoint: /bin/sh -c "envsubst < /etc/headscale/config.template.yaml > /etc/headscale/config.yaml && exec headscale serve"
+    ports:
+      - "${HEADSCALE_HTTP_PORT:-6888}:8080"
+      - "${HEADSCALE_STUN_PORT:-3478}:3478/udp"
+    volumes:
+      - "${DATA_PATH:-/opt/containers/sys}/headscale/config.template.yaml:/etc/headscale/config.template.yaml"
+      - "${DATA_PATH:-/opt/containers/sys}/headscale/data:/var/lib/headscale"
+    restart: unless-stopped
+    networks:
+      - ztcloud
+
+  etcd:
+    image: ${ETCD_IMAGE:-quay.io/coreos/etcd:latest}
+    container_name: ${ETCD_NAME:-etcd}
+    environment:
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    ports:
+      - "${ETCD_CLIENT_PORT:-2379}:2379"
+    volumes:
+      - "${DATA_PATH:-/opt/containers/sys}/etcd:/etcd-data"
+    command: >
+      /usr/local/bin/etcd \
+        --data-dir=/etcd-data \
+        --name ${ETCD_NODE_NAME:-node1} \
+        --initial-advertise-peer-urls http://etcd:2380 \
+        --listen-peer-urls http://0.0.0.0:2380 \
+        --listen-client-urls http://0.0.0.0:2379 \
+        --advertise-client-urls http://etcd:2379 \
+        --initial-cluster ${ETCD_NODE_NAME:-node1}=http://etcd:2380 \
+        --initial-cluster-token ${ETCD_CLUSTER_TOKEN:-etcd-cluster-1} \
+        --initial-cluster-state new
+    restart: unless-stopped
+    networks:
+      - ztcloud
+
+  coredns:
+    image: ${COREDNS_IMAGE:-coredns/coredns:latest}
+    container_name: ${COREDNS_NAME:-coredns}
+    entrypoint: /entrypoint.sh
+    command: -conf /etc/coredns/Corefile
+    ports:
+      - "${COREDNS_TCP_PORT:-53}:53/tcp"
+      - "${COREDNS_UDP_PORT:-53}:53/udp"
+    volumes:
+      - "${DATA_PATH:-/opt/containers/sys}/coredns/Corefile:/etc/coredns/Corefile"
+    restart: unless-stopped
+    networks:
+      - ztcloud
+    depends_on:
+      - etcd
+    healthcheck:
+      test: ["CMD", "coredns", "-version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  caddy:
+    image: ${CADDY_IMAGE:-caddy:latest}
+    container_name: ${CADDY_NAME:-caddy}
+    command: caddy run --config /etc/caddy/Caddyfile.json
+    ports:
+      - "${CADDY_ADMIN_PORT:-2019}:2019"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+    volumes:
+      - "${DATA_PATH:-/opt/containers/sys}/caddy/data:/data"
+      - "${DATA_PATH:-/opt/containers/sys}/caddy/containers:/sync/caddy/containers"
+    restart: unless-stopped
+    networks:
+      - ztcloud
+
+  ztcldns:
+    image: ${ZTCLDNS_IMAGE:-ztcldns:latest}
+    container_name: ${ZTCLDNS_NAME:-ztcldns}
+    environment:
+      - BASE_DOMAIN=${BASE_DOMAIN:-ztcloud.ztcl}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - "${DATA_PATH:-/opt/containers/sys}/coredns/hosts:/sync/hosts"
+      - "${DATA_PATH:-/opt/containers/sys}/caddy/containers:/sync/caddy/containers"
+    restart: unless-stopped
+    networks:
+      - ztcloud
+
+networks:
+  ztcloud:
+    driver: bridge
