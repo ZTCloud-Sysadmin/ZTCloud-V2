@@ -88,7 +88,7 @@ systemctl enable --now podman.socket
 
 # Ensure pipx path is available for the system user
 echo "[*] Ensuring /usr/local/bin is in $SYSTEM_USERNAME's PATH"
-echo 'export PATH="$PATH:/usr/local/bin"' >> "/home/$SYSTEM_USERNAME/.profile"
+echo 'export PATH="$PATH:/usr/local/bin:/root/.local/bin:$PATH"' >> "/home/$SYSTEM_USERNAME/.profile"
 chown "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "/home/$SYSTEM_USERNAME/.profile"
 
 # === Continue to install.sh as the system user (with full login shell) ===
