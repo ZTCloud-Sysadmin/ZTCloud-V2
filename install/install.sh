@@ -66,6 +66,29 @@ else
   exit 1
 fi
 
+# Test 4: Check podman-compose availability
+if command -v podman-compose &>/dev/null; then
+  echo "[OK] podman-compose is installed"
+else
+  echo "[FAIL] podman-compose is not installed or not in PATH"
+  echo "       Ensure pipx path is loaded or re-run installer"
+  exit 1
+fi
+
+# Optional debug
+echo "[debug] XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-not set}"
+
+# Test 5: Writable install path
+if [[ -w "$INSTALLER_PATH" ]]; then
+  echo "[OK] Installer path is writable: $INSTALLER_PATH"
+else
+  echo "[FAIL] Installer path is not writable: $INSTALLER_PATH"
+  exit 1
+fi
+
+echo "[*] All self-tests passed ✅"
+
+
 # Optional debug
 echo "[debug] XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-not set}"
 
