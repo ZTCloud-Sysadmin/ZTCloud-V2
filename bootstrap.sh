@@ -19,6 +19,11 @@ echo "[*] Installing required packages"
 apt-get update -qq
 apt-get install -y -qq curl sudo podman jq gettext-base git
 
+# Install podman-compose
+echo "[*] Installing podman-compose"
+apt-get install -y -qq python3-pip
+pip3 install podman-compose
+
 # === Interactive Config Input ===
 echo "[*] Gathering installer settings..."
 
