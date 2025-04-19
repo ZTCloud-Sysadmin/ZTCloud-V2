@@ -133,19 +133,27 @@ if [[ "$missing" -eq 1 ]]; then
   exit 1
 fi
 
-# Define filename → target subdir map
+# Define filename → target subdir[:override_filename] map
 declare -A TEMPLATE_TARGETS=(
   [Caddyfile.template.json]="caddy"
   [Corefile.template]="coredns"
-  [headscale.config.template.yaml]="headscale"
+  [headscale.config.template.yaml]="headscale:config.yaml"
   [derpmap.template.json]="headscale"
+  [example_intergration.sh.template]="utils"
 )
 
 # Render templates
 find "$TEMPLATE_DIR" -type f -name "*.template*" | while read -r template; do
   filename="$(basename "$template")"
-  rendered_name="${filename/.template/}"  # Strip `.template` from name
-  subdir="${TEMPLATE_TARGETS[$filename]:-misc}"
+  mapping="${TEMPLATE_TARGETS[$filename]:-misc}"
+  subdir="${mapping%%:*}"                             # part before colon
+  override_name="${mapping#*:}"                      # part after colon
+
+  if [[ "$mapping" == *:* && "$override_name" != "$mapping" ]]; then
+    rendered_name="$override_name"
+  else
+    rendered_name="${filename/.template/}"
+  fi
 
   output_dir="$OUTPUT_BASE/$subdir"
   output_path="$output_dir/$rendered_name"
