@@ -28,3 +28,44 @@ echo "INSTALLER_PATH: $INSTALLER_PATH"
 echo "SYSTEM_USERNAME: $SYSTEM_USERNAME"
 echo "ZTCL_VERSION: $ZTCL_VERSION"
 echo "========================================"
+
+# ===========================
+# Self-tests
+# ===========================
+echo "[*] Running self-tests..."
+
+# Test 1: Confirm running as correct user
+EXPECTED_USER="$SYSTEM_USERNAME"
+ACTUAL_USER="$(whoami)"
+if [[ "$ACTUAL_USER" != "$EXPECTED_USER" ]]; then
+  echo "[FAIL] Not running as $EXPECTED_USER (current: $ACTUAL_USER)"
+  exit 1
+else
+  echo "[OK] Running as correct user: $ACTUAL_USER"
+fi
+
+# Test 2: Check passwordless sudo
+if sudo -n true 2>/dev/null; then
+  echo "[OK] Passwordless sudo is configured"
+else
+  echo "[FAIL] Passwordless sudo is not working for $ACTUAL_USER"
+  exit 1
+fi
+
+# Test 3: Check Podman access
+if podman info &>/dev/null; then
+  echo "[OK] Podman is accessible"
+else
+  echo "[FAIL] Podman is not accessible or not configured correctly"
+  exit 1
+fi
+
+# Test 4: Writable install path
+if [[ -w "$INSTALLER_PATH" ]]; then
+  echo "[OK] Installer path is writable: $INSTALLER_PATH"
+else
+  echo "[FAIL] Installer path is not writable: $INSTALLER_PATH"
+  exit 1
+fi
+
+echo "[*] All self-tests passed ✅"

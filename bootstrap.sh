@@ -31,11 +31,12 @@ SYSTEM_USERNAME="${SYSTEM_USERNAME_INPUT:-ztcl-sysadmin}"
 read -rp "ZTCL version or branch to clone [default: origin/main]: " ZTCL_VERSION_INPUT
 ZTCL_VERSION="${ZTCL_VERSION_INPUT:-origin/main}"
 
+# Strip "origin/" prefix if provided
+ZTCL_BRANCH="${ZTCL_VERSION#origin/}"
+
 # === Clone repo ===
-echo "[*] Cloning ZTCL repo to $INSTALLER_PATH"
-git clone https://github.com/ZTCloud-Sysadmin/ztcl.git "$INSTALLER_PATH"
-cd "$INSTALLER_PATH"
-git checkout "$ZTCL_VERSION"
+echo "[*] Cloning ZTCL repo (branch: $ZTCL_BRANCH) to $INSTALLER_PATH"
+git clone --branch "$ZTCL_BRANCH" https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git "$INSTALLER_PATH"
 
 # === Write config.sh ===
 CONFIG_PATH="$INSTALLER_PATH/install/config.sh"
