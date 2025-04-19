@@ -38,6 +38,9 @@ ZTCL_BRANCH="${ZTCL_VERSION#origin/}"
 echo "[*] Cloning ZTCL repo (branch: $ZTCL_BRANCH) to $INSTALLER_PATH"
 git clone --branch "$ZTCL_BRANCH" https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git "$INSTALLER_PATH"
 
+# Fix ownership so system user has write access
+chown -R "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "$INSTALLER_PATH"
+
 # === Write config.sh ===
 CONFIG_PATH="$INSTALLER_PATH/install/config.sh"
 echo "[*] Writing config to $CONFIG_PATH"
@@ -76,6 +79,6 @@ apt-get install -y -qq dbus-x11
 # Enable Podman socket
 systemctl enable --now podman.socket
 
-# === Continue to install.sh as the system user ===
+# === Continue to install.sh as the system user (with full login shell) ===
 echo "[*] Handing over to install.sh"
-sudo -u "$SYSTEM_USERNAME" bash "$INSTALLER_PATH/install/install.sh"
+sudo -iu "$SYSTEM_USERNAME" bash "$INSTALLER_PATH/install/install.sh"
