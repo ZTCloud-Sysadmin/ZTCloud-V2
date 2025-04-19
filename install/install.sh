@@ -78,3 +78,68 @@ else
 fi
 
 echo "[*] All self-tests passed ✅"
+
+# ===========================
+# Template Rendering
+# ===========================
+echo "[*] Rendering configuration templates..."
+
+TEMPLATE_DIR="$INSTALLER_PATH/install/config/templates/sys"
+OUTPUT_BASE="/mnt/containers/sys"
+
+# Export all known vars so envsubst can use them
+set -o allexport
+source "$INSTALLER_PATH/install/config.sh"
+if [[ -f "$INSTALLER_PATH/install/config/.env" ]]; then
+  source "$INSTALLER_PATH/install/config/.env"
+fi
+set +o allexport
+
+# Required environment variables (used in templates or volumes)
+REQUIRED_VARS=(
+  HEADSCALE_IMAGE HEADSCALE_NAME HEADSCALE_HTTP_PORT HEADSCALE_STUN_PORT HEADSCALE_GRPC_PORT HEADSCALE_SERVER_URL
+  COREDNS_IMAGE COREDNS_NAME COREDNS_TCP_PORT COREDNS_UDP_PORT
+  CADDY_IMAGE CADDY_NAME CADDY_ADMIN_PORT CADDY_HTTPS_PORT
+  ZTCLDNS_IMAGE ZTCLDNS_NAME BASE_DOMAIN
+  ETCD_IMAGE ETCD_NAME ETCD_CLIENT_PORT ETCD_NODE_NAME ETCD_CLUSTER_TOKEN
+  DERP_REGION_ID DERP_REGION_CODE DERP_REGION_NAME DERP_NODE_NAME DERP_HOSTNAME DERP_IPV4 DERP_IPV6 DERP_PORT STUN_PORT
+  TLS_EMAIL DATA_PATH
+)
+
+echo "[*] Validating required environment variables..."
+missing=0
+for var in "${REQUIRED_VARS[@]}"; do
+  if [[ -z "${!var:-}" ]]; then
+    echo "[FAIL] Missing required variable: $var"
+    missing=1
+  fi
+done
+
+if [[ "$missing" -eq 1 ]]; then
+  echo "[!] One or more required variables are missing. Aborting template rendering."
+  exit 1
+fi
+
+# Render templates
+find "$TEMPLATE_DIR" -type f -name "*.template*" | while read -r template; do
+  filename="$(basename "$template")"
+  rendered_name="${filename/.template/}"  # Strip `.template` from name
+
+  # Determine target subdir by file
+  case "$rendered_name" in
+    Caddyfile.json)       subdir="caddy" ;;
+    Corefile)             subdir="coredns" ;;
+    config.yaml|derpmap.json) subdir="headscale" ;;
+    *.sh)                 subdir="utils" ;;
+    *)                    subdir="misc" ;;
+  esac
+
+  output_dir="$OUTPUT_BASE/$subdir"
+  output_path="$output_dir/$rendered_name"
+
+  echo "[*] Rendering: $template → $output_path"
+  mkdir -p "$output_dir"
+  envsubst < "$template" > "$output_path"
+done
+
+echo "[*] Template rendering complete ✅"
