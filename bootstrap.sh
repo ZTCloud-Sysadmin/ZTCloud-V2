@@ -34,6 +34,12 @@ ZTCL_VERSION="${ZTCL_VERSION_INPUT:-origin/main}"
 # Strip "origin/" prefix if provided
 ZTCL_BRANCH="${ZTCL_VERSION#origin/}"
 
+# === Create user if needed (before chown) ===
+if ! id "$SYSTEM_USERNAME" &>/dev/null; then
+  echo "[*] Creating system user $SYSTEM_USERNAME"
+  useradd -m -s /bin/bash "$SYSTEM_USERNAME"
+fi
+
 # === Clone repo ===
 echo "[*] Cloning ZTCL repo (branch: $ZTCL_BRANCH) to $INSTALLER_PATH"
 git clone --branch "$ZTCL_BRANCH" https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git "$INSTALLER_PATH"
@@ -49,12 +55,6 @@ INSTALLER_PATH="$INSTALLER_PATH"
 SYSTEM_USERNAME="$SYSTEM_USERNAME"
 ZTCL_VERSION="$ZTCL_VERSION"
 EOF
-
-# === Create user if needed ===
-if ! id "$SYSTEM_USERNAME" &>/dev/null; then
-  echo "[*] Creating system user $SYSTEM_USERNAME"
-  useradd -m -s /bin/bash "$SYSTEM_USERNAME"
-fi
 
 # Create podman group if needed
 if ! getent group podman > /dev/null; then
