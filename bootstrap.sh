@@ -36,7 +36,7 @@ ZTCL_BRANCH="${ZTCL_VERSION#origin/}"
 
 # === Clone repo ===
 echo "[*] Cloning ZTCL repo (branch: $ZTCL_BRANCH) to $INSTALLER_PATH"
-git clone --branch "$ZTCL_BRANCH" https://github.com/ZTCloud-Sysadmin/ztcl.git "$INSTALLER_PATH"
+git clone --branch "$ZTCL_BRANCH" https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git "$INSTALLER_PATH"
 
 # === Write config.sh ===
 CONFIG_PATH="$INSTALLER_PATH/install/config.sh"

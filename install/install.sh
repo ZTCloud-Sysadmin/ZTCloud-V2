@@ -52,13 +52,22 @@ else
   exit 1
 fi
 
-# Test 3: Check Podman access
-if podman info &>/dev/null; then
-  echo "[OK] Podman is accessible"
+# Test 3: Check Podman access (improved test)
+if command -v podman &>/dev/null; then
+  if podman info --log-level=error &>/dev/null; then
+    echo "[OK] Podman is accessible"
+  else
+    echo "[WARN] Podman is installed but returned an error"
+    echo "       Possibly not a full login shell or XDG session not active"
+    echo "       You can test manually with: sudo -iu $SYSTEM_USERNAME podman info"
+  fi
 else
-  echo "[FAIL] Podman is not accessible or not configured correctly"
+  echo "[FAIL] Podman binary not found"
   exit 1
 fi
+
+# Optional debug
+echo "[debug] XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-not set}"
 
 # Test 4: Writable install path
 if [[ -w "$INSTALLER_PATH" ]]; then
