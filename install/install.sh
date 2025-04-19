@@ -85,7 +85,6 @@ echo "[*] All self-tests passed ✅"
 echo "[*] Rendering configuration templates..."
 
 TEMPLATE_DIR="$INSTALLER_PATH/install/config/templates/sys"
-OUTPUT_BASE="/mnt/containers/sys"
 
 # Export all known vars so envsubst can use them
 set -o allexport
@@ -94,6 +93,20 @@ if [[ -f "$INSTALLER_PATH/install/config/.env" ]]; then
   source "$INSTALLER_PATH/install/config/.env"
 fi
 set +o allexport
+
+# Use DATA_PATH as base output location
+OUTPUT_BASE="${DATA_PATH:-/opt/containers/sys}"
+
+# Ensure base output dir exists and is writable
+if [[ ! -d "$OUTPUT_BASE" ]]; then
+  echo "[*] Creating DATA_PATH at $OUTPUT_BASE"
+  mkdir -p "$OUTPUT_BASE"
+fi
+
+if [[ ! -w "$OUTPUT_BASE" ]]; then
+  echo "[FAIL] DATA_PATH ($OUTPUT_BASE) is not writable."
+  exit 1
+fi
 
 # Required environment variables (used in templates or volumes)
 REQUIRED_VARS=(
