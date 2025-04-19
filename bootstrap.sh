@@ -36,7 +36,7 @@ ZTCL_BRANCH="${ZTCL_VERSION#origin/}"
 
 # === Clone repo ===
 echo "[*] Cloning ZTCL repo (branch: $ZTCL_BRANCH) to $INSTALLER_PATH"
-git clone --branch "$ZTCL_BRANCH" https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git "$INSTALLER_PATH"
+git clone --branch "$ZTCL_BRANCH" https://github.com/ZTCloud-Sysadmin/ztcl.git "$INSTALLER_PATH"
 
 # === Write config.sh ===
 CONFIG_PATH="$INSTALLER_PATH/install/config.sh"
@@ -64,6 +64,14 @@ echo "[*] Adding $SYSTEM_USERNAME to sudo and podman groups"
 usermod -aG sudo,podman "$SYSTEM_USERNAME"
 echo "$SYSTEM_USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SYSTEM_USERNAME"
 chmod 440 "/etc/sudoers.d/$SYSTEM_USERNAME"
+
+# Enable lingering for systemd user services (for rootless Podman)
+echo "[*] Enabling lingering for $SYSTEM_USERNAME"
+loginctl enable-linger "$SYSTEM_USERNAME"
+
+# Install dbus-x11 to clean up Podman systemd/dbus warnings
+echo "[*] Installing dbus-x11 to silence Podman warnings"
+apt-get install -y -qq dbus-x11
 
 # Enable Podman socket
 systemctl enable --now podman.socket
