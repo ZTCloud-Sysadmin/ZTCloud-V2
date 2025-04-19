@@ -139,7 +139,6 @@ declare -A TEMPLATE_TARGETS=(
   [Corefile.template]="coredns"
   [headscale.config.template.yaml]="headscale"
   [derpmap.template.json]="headscale"
-  [example_intergration.sh.template]="utils"
 )
 
 # Render templates
