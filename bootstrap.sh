@@ -50,8 +50,17 @@ if ! id "$SYSTEM_USERNAME" &>/dev/null; then
   useradd -m -s /bin/bash "$SYSTEM_USERNAME"
 fi
 
-# Add to groups and enable sudo
+# Create podman group if it doesn't exist
+if ! getent group podman > /dev/null; then
+  echo "[*] Creating 'podman' group"
+  groupadd podman
+fi
+
+# Add user to groups
+echo "[*] Adding $SYSTEM_USERNAME to sudo and podman groups"
 usermod -aG sudo,podman "$SYSTEM_USERNAME"
+
+# Passwordless sudo
 echo "$SYSTEM_USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SYSTEM_USERNAME"
 chmod 440 "/etc/sudoers.d/$SYSTEM_USERNAME"
 
