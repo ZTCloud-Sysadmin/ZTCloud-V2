@@ -75,18 +75,18 @@ services:
     networks:
       - ztcloud
 
-  ztcldns:
-    image: ${ZTCLDNS_IMAGE:-ztcldns:latest}
-    container_name: ${ZTCLDNS_NAME:-ztcldns}
-    environment:
-      - BASE_DOMAIN=${BASE_DOMAIN:-ztcloud.ztcl}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - "${DATA_PATH:-/opt/containers/sys}/coredns/hosts:/sync/hosts"
-      - "${DATA_PATH:-/opt/containers/sys}/caddy/containers:/sync/caddy/containers"
-    restart: unless-stopped
-    networks:
-      - ztcloud
+  #ztcldns:
+  #  image: ${ZTCLDNS_IMAGE:-ztcldns:latest}
+  #  container_name: ${ZTCLDNS_NAME:-ztcldns}
+  #  environment:
+  #    - BASE_DOMAIN=${BASE_DOMAIN:-ztcloud.ztcl}
+  #  volumes:
+  #    - /var/run/docker.sock:/var/run/docker.sock
+  #    - "${DATA_PATH:-/opt/containers/sys}/coredns/hosts:/sync/hosts"
+  #    - "${DATA_PATH:-/opt/containers/sys}/caddy/containers:/sync/caddy/containers"
+  #  restart: unless-stopped
+  #  networks:
+  #    - ztcloud
 
 networks:
   ztcloud:
