@@ -257,7 +257,7 @@ IMAGES_TO_PULL=(
   "$ETCD_IMAGE"
   "$COREDNS_IMAGE"
   "$CADDY_IMAGE"
-  "$ZTCLDNS_IMAGE"
+#  "$ZTCLDNS_IMAGE"
 )
 
 for image in "${IMAGES_TO_PULL[@]}"; do
