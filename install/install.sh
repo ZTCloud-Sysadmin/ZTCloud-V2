@@ -124,3 +124,26 @@ if ! command -v podman-compose &>/dev/null; then
 else
   echo "[OK] podman-compose already installed"
 fi
+
+# ===========================
+# Launch with Podman Compose
+# ===========================
+echo "[*] All config files found. Launching stack with Podman Compose..."
+
+COMPOSE_FILE="$INSTALLER_PATH/install/config/ztcloud-compose.yaml"
+
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+  echo "[FAIL] Compose file not found at $COMPOSE_FILE"
+  exit 1
+fi
+
+# Run the stack
+podman-compose -f "$COMPOSE_FILE" up -d
+
+echo "[*] Stack launched successfully ✅"
+
+# ===========================
+# Post-launch container summary
+# ===========================
+echo "[+] Services running via Podman:"
+podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
