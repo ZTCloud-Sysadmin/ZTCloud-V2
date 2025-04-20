@@ -25,8 +25,8 @@ After=network.target
 Type=simple
 User=$SYSTEM_USERNAME
 WorkingDirectory=$INSTALLER_PATH/sys
-ExecStart=/usr/local/bin/podman-compose -f $base_path/ztcloud-compose.yaml up
-ExecStop=/usr/local/bin/podman-compose -f $base_path/ztcloud-compose.yaml down
+ExecStart=/usr/local/bin/podman-compose -f $INSTALLER_PATH/sys/ztcloud-compose.yaml up
+ExecStop=/usr/local/bin/podman-compose -f $INSTALLER_PATH/sys/ztcloud-compose.yaml down
 Restart=always
 Environment="PATH=/usr/local/bin:/usr/bin:/bin"
 
