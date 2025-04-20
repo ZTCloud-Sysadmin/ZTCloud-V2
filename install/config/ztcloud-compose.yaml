@@ -50,11 +50,6 @@ services:
       - ztcloud
     depends_on:
       - etcd
-    healthcheck:
-      test: ["CMD", "sh", "-c", "echo | nc -w 2 127.0.0.1 53 || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
 
   caddy:
     image: ${CADDY_IMAGE:-docker.io/library/caddy:latest}
