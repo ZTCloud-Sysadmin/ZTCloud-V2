@@ -216,7 +216,7 @@ echo "[*] Template rendering complete ✅"
 # ===========================
 echo "[*] Configuring Podman registries.conf..."
 
-REGISTRY_TEMPLATE="$INSTALLER_PATH/install/config/templates/sys/podman/registries.conf.template"
+REGISTRY_TEMPLATE="$INSTALLER_PATH/install/config/sys/podman/registries.conf.template"
 REGISTRY_RENDERED="$INSTALLER_PATH/install/config/sys/podman/registries.conf"
 REGISTRY_TARGET="/etc/containers/registries.conf"
 
@@ -246,8 +246,6 @@ if [[ -f "$REGISTRY_TEMPLATE" ]]; then
 else
   echo "[WARN] Podman registries.conf.template not found — skipping registry config"
 fi
-
-
 
 # ===========================
 # Podman Image Pull Test
