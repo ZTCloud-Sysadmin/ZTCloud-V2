@@ -43,7 +43,7 @@ services:
   coredns:
     image: ${COREDNS_IMAGE:-coredns/coredns:latest}
     container_name: ${COREDNS_NAME:-coredns}
-    entrypoint: /entrypoint.sh
+    #entrypoint: /entrypoint.sh
     command: -conf /etc/coredns/Corefile
     ports:
       - "${COREDNS_TCP_PORT:-53}:53/tcp"
