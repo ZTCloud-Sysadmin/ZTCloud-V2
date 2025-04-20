@@ -201,6 +201,20 @@ find "$TEMPLATE_DIR" -type f -name "*.template*" | while read -r template; do
 
 done
 
+# ===========================
+# Copy ztcloud-compose.yaml to sys directory
+# ===========================
+ZT_COMPOSE_SRC="$INSTALLER_PATH/install/config/ztcloud-compose.yaml"
+ZT_COMPOSE_DEST="$DATA_PATH/ztcloud-compose.yaml"
+
+if [[ -f "$ZT_COMPOSE_SRC" ]]; then
+  echo "[*] Copying compose file to sys directory..."
+  cp "$ZT_COMPOSE_SRC" "$ZT_COMPOSE_DEST"
+else
+  echo "[FAIL] Compose source file missing: $ZT_COMPOSE_SRC"
+  exit 1
+fi
+
 # Copy .env to sys path (DATA_PATH)
 if [[ -f "$INSTALLER_PATH/install/config/.env" ]]; then
   echo "[*] Copying .env to $DATA_PATH/.env"
