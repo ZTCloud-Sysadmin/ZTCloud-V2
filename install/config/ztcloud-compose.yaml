@@ -31,9 +31,9 @@ services:
       --initial-cluster ${ETCD_NODE_NAME:-node1}=http://etcd:2380
       --initial-cluster-token ${ETCD_CLUSTER_TOKEN:-etcd-cluster-1}
       --initial-cluster-state new
-  restart: unless-stopped
-  networks:
-    - ztcloud
+    restart: unless-stopped
+    networks:
+      - ztcloud
 
   coredns:
     image: ${COREDNS_IMAGE:-docker.io/coredns/coredns:1.11.1}
@@ -44,6 +44,7 @@ services:
       - "${COREDNS_UDP_PORT:-53}:53/udp"
     volumes:
       - "${DATA_PATH:-/opt/containers/sys}/coredns/Corefile:/etc/coredns/Corefile"
+      - "${DATA_PATH:-/opt/containers/sys}/coredns/hosts:/etc/coredns/hosts"
     restart: unless-stopped
     networks:
       - ztcloud
@@ -63,24 +64,24 @@ services:
       - "${CADDY_ADMIN_PORT:-2019}:2019"
       - "${CADDY_HTTPS_PORT:-443}:443"
     volumes:
-    - "${DATA_PATH:-/opt/containers/sys}/caddy/data:/data"
-    - "${DATA_PATH:-/opt/containers/sys}/caddy/Caddyfile.json:/etc/caddy/Caddyfile.json"
-    
+      - "${DATA_PATH:-/opt/containers/sys}/caddy/data:/data"
+      - "${DATA_PATH:-/opt/containers/sys}/caddy/Caddyfile.json:/etc/caddy/Caddyfile.json"
+    restart: unless-stopped
     networks:
       - ztcloud
 
-  #ztcldns:
-  #  image: ${ZTCLDNS_IMAGE:-ztcldns:latest}
-  #  container_name: ${ZTCLDNS_NAME:-ztcldns}
-  #  environment:
-  #    - BASE_DOMAIN=${BASE_DOMAIN:-ztcloud.ztcl}
-  #  volumes:
-  #    - /var/run/docker.sock:/var/run/docker.sock
-  #    - "${DATA_PATH:-/opt/containers/sys}/coredns/hosts:/sync/hosts"
-  #    - "${DATA_PATH:-/opt/containers/sys}/caddy/containers:/sync/caddy/containers"
-  #  restart: unless-stopped
-  #  networks:
-  #    - ztcloud
+  # ztcldns:
+  #   image: ${ZTCLDNS_IMAGE:-ztcldns:latest}
+  #   container_name: ${ZTCLDNS_NAME:-ztcldns}
+  #   environment:
+  #     - BASE_DOMAIN=${BASE_DOMAIN:-ztcloud.ztcl}
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - "${DATA_PATH:-/opt/containers/sys}/coredns/hosts:/sync/hosts"
+  #     - "${DATA_PATH:-/opt/containers/sys}/caddy/containers:/sync/caddy/containers"
+  #   restart: unless-stopped
+  #   networks:
+  #     - ztcloud
 
 networks:
   ztcloud:
