@@ -19,13 +19,6 @@ echo "[*] Installing required packages"
 apt-get update -qq
 apt-get install -y -qq curl sudo podman jq gettext-base git
 
-# Install podman-compose via pipx (PEP 668 compliant)
-echo "[*] Installing podman-compose via pipx"
-apt-get install -y -qq pipx
-pipx ensurepath
-export PATH="$PATH:/usr/local/bin:/root/.local/bin"
-pipx install podman-compose
-
 # === Interactive Config Input ===
 echo "[*] Gathering installer settings..."
 

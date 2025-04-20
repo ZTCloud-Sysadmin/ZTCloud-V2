@@ -69,14 +69,34 @@ else
   exit 1
 fi
 
-# Test 4: Check podman-compose availability
-if command -v podman-compose &>/dev/null; then
-  echo "[OK] podman-compose is installed"
+# ===========================
+# Ensure pipx and podman-compose (install if missing)
+# ===========================
+if ! command -v podman-compose &>/dev/null; then
+  echo "[*] podman-compose not found. Attempting to install via pipx..."
+
+  if ! command -v pipx &>/dev/null; then
+    echo "[*] pipx not found, installing via apt..."
+    sudo apt-get install -y -qq pipx
+    pipx ensurepath
+  fi
+
+  # Ensure ~/.local/bin is in PATH (just in case)
+  export PATH="$PATH:$HOME/.local/bin"
+
+  echo "[*] Installing podman-compose..."
+  pipx install podman-compose
+
+  if ! command -v podman-compose &>/dev/null; then
+    echo "[FAIL] podman-compose still not available after install"
+    exit 1
+  else
+    echo "[OK] podman-compose installed successfully"
+  fi
 else
-  echo "[FAIL] podman-compose is not installed or not in PATH"
-  echo "       Ensure pipx path is loaded or re-run installer"
-  exit 1
+  echo "[OK] podman-compose already installed"
 fi
+
 
 # Optional debug
 echo "[debug] XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-not set}"
