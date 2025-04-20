@@ -220,7 +220,10 @@ REGISTRY_TEMPLATE="$INSTALLER_PATH/install/config/templates/sys/podman/registrie
 REGISTRY_RENDERED="$INSTALLER_PATH/install/config/sys/podman/registries.conf"
 REGISTRY_TARGET="/etc/containers/registries.conf"
 
-# Make sure the target folder exists
+# Optional restart control (set via .env or config.sh)
+PODMAN_RESTART_ON_REGISTRY_UPDATE="${PODMAN_RESTART_ON_REGISTRY_UPDATE:-true}"
+
+# Ensure target folder exists
 mkdir -p "$(dirname "$REGISTRY_RENDERED")"
 
 if [[ -f "$REGISTRY_TEMPLATE" ]]; then
@@ -229,9 +232,22 @@ if [[ -f "$REGISTRY_TEMPLATE" ]]; then
 
   echo "[*] Copying rendered registries.conf to $REGISTRY_TARGET"
   sudo cp "$REGISTRY_RENDERED" "$REGISTRY_TARGET"
+
+  if [[ "$PODMAN_RESTART_ON_REGISTRY_UPDATE" == "true" ]]; then
+    if systemctl is-active --quiet podman.socket; then
+      echo "[*] Restarting Podman socket to apply registry config"
+      sudo systemctl restart podman.socket
+    else
+      echo "[WARN] Podman socket is not active — skipping restart"
+    fi
+  else
+    echo "[*] Skipping podman.socket restart (PODMAN_RESTART_ON_REGISTRY_UPDATE=$PODMAN_RESTART_ON_REGISTRY_UPDATE)"
+  fi
 else
   echo "[WARN] Podman registries.conf.template not found — skipping registry config"
 fi
+
+
 
 # ===========================
 # Podman Image Pull Test
