@@ -233,6 +233,31 @@ else
   echo "[WARN] Podman registries.conf.template not found — skipping registry config"
 fi
 
+# ===========================
+# Podman Image Pull Test
+# ===========================
+echo "[*] Pulling required container images to validate registry setup..."
+
+IMAGES_TO_PULL=(
+  "$HEADSCALE_IMAGE"
+  "$ETCD_IMAGE"
+  "$COREDNS_IMAGE"
+  "$CADDY_IMAGE"
+  "$ZTCLDNS_IMAGE"
+)
+
+for image in "${IMAGES_TO_PULL[@]}"; do
+  echo "[*] Pulling image: $image"
+  if podman pull "$image" > /dev/null 2>&1; then
+    echo "[OK] Pulled $image"
+  else
+    echo "[FAIL] Failed to pull image: $image"
+    echo "       Check your registries.conf or internet connection"
+    exit 1
+  fi
+done
+
+echo "[*] All required images pulled successfully ✅"
 
 # ===========================
 # Verify Rendered Files Exist
