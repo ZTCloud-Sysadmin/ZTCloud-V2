@@ -5,13 +5,54 @@ set -euo pipefail
 # Ensure PATH includes pipx-installed binaries
 export PATH="$PATH:/usr/local/bin:/root/.local/bin"
 
-# Load config
+# ===========================
+# Load config and .env
+# ===========================
 CONFIG_FILE="$(dirname "$0")/config.sh"
 if [[ -f "$CONFIG_FILE" ]]; then
   source "$CONFIG_FILE"
 else
   echo "[!] config.sh not found at $CONFIG_FILE"
   exit 1
+fi
+
+ENV_FILE="$(dirname "$0")/config/.env"
+if [[ -f "$ENV_FILE" ]]; then
+  set -o allexport
+  source "$ENV_FILE"
+  set +o allexport
+else
+  echo "[!] .env file not found at $ENV_FILE"
+  exit 1
+fi
+
+# ===========================
+# Validate required environment variables from .env
+# ===========================
+echo "[*] Validating .env environment variables..."
+
+REQUIRED_ENV_VARS=(
+  DATA_PATH HEADSCALE_IMAGE HEADSCALE_NAME HEADSCALE_HTTP_PORT HEADSCALE_STUN_PORT
+  ETCD_IMAGE ETCD_NAME ETCD_CLIENT_PORT ETCD_NODE_NAME ETCD_CLUSTER_TOKEN
+  COREDNS_IMAGE COREDNS_NAME COREDNS_TCP_PORT COREDNS_UDP_PORT
+  CADDY_IMAGE CADDY_NAME CADDY_ADMIN_PORT CADDY_HTTPS_PORT
+  TLS_EMAIL BASE_DOMAIN
+)
+
+missing=0
+for var in "${REQUIRED_ENV_VARS[@]}"; do
+  if [[ -z "${!var:-}" ]]; then
+    echo "[FAIL] Missing required .env variable: $var"
+    missing=1
+  fi
+
+done
+
+if [[ "$missing" -eq 1 ]]; then
+  echo "[!] One or more required .env variables are missing. Aborting."
+  exit 1
+else
+  echo "[OK] All required .env variables are set."
 fi
 
 # Check if current user matches SYSTEM_USERNAME
