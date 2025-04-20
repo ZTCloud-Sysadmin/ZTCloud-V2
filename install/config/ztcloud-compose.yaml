@@ -4,7 +4,7 @@ services:
   headscale:
     image: ${HEADSCALE_IMAGE:-ghcr.io/juanfont/headscale:latest}
     container_name: ${HEADSCALE_NAME:-headscale}
-    command: headscale serve
+    command: serve
     ports:
       - "${HEADSCALE_HTTP_PORT:-6888}:8080"
       - "${HEADSCALE_STUN_PORT:-3478}:3478/udp"
@@ -18,27 +18,22 @@ services:
   etcd:
     image: ${ETCD_IMAGE:-quay.io/coreos/etcd:latest}
     container_name: ${ETCD_NAME:-etcd}
-    environment:
-      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
-      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
     ports:
       - "${ETCD_CLIENT_PORT:-2379}:2379"
     volumes:
       - "${DATA_PATH:-/opt/containers/sys}/etcd:/etcd-data"
     command: >
-      /usr/local/bin/etcd \
-        --data-dir=/etcd-data \
-        --name ${ETCD_NODE_NAME:-node1} \
-        --initial-advertise-peer-urls http://etcd:2380 \
-        --listen-peer-urls http://0.0.0.0:2380 \
-        --listen-client-urls http://0.0.0.0:2379 \
-        --advertise-client-urls http://etcd:2379 \
-        --initial-cluster ${ETCD_NODE_NAME:-node1}=http://etcd:2380 \
-        --initial-cluster-token ${ETCD_CLUSTER_TOKEN:-etcd-cluster-1} \
-        --initial-cluster-state new
-    restart: unless-stopped
-    networks:
-      - ztcloud
+      /usr/local/bin/etcd --data-dir=/etcd-data --name ${ETCD_NODE_NAME:-node1}
+      --initial-advertise-peer-urls http://etcd:2380
+      --listen-peer-urls http://0.0.0.0:2380
+      --listen-client-urls http://0.0.0.0:2379
+      --advertise-client-urls http://etcd:2379
+      --initial-cluster ${ETCD_NODE_NAME:-node1}=http://etcd:2380
+      --initial-cluster-token ${ETCD_CLUSTER_TOKEN:-etcd-cluster-1}
+      --initial-cluster-state new
+  restart: unless-stopped
+  networks:
+    - ztcloud
 
   coredns:
     image: ${COREDNS_IMAGE:-docker.io/coredns/coredns:1.11.1}

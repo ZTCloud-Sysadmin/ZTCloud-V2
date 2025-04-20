@@ -198,7 +198,15 @@ find "$TEMPLATE_DIR" -type f -name "*.template*" | while read -r template; do
   echo "[*] Rendering: $template → $output_path"
   mkdir -p "$output_dir"
   envsubst < "$template" > "$output_path"
+
 done
+
+# Ensure empty CoreDNS hosts file exists
+COREDNS_HOSTS_FILE="$DATA_PATH/coredns/hosts"
+if [[ ! -f "$COREDNS_HOSTS_FILE" ]]; then
+  echo "[*] Creating empty CoreDNS hosts file at $COREDNS_HOSTS_FILE"
+  touch "$COREDNS_HOSTS_FILE"
+fi
 
 echo "[*] Template rendering complete ✅"
 
@@ -223,7 +231,7 @@ echo "[*] Stack launched successfully ✅"
 # Post-launch container summary + health
 # ===========================
 echo "[+] Services running via Podman (as $SYSTEM_USERNAME):"
-sudo -iu "$SYSTEM_USERNAME" podman ps --format "table {{.Names}}	{{.Image}}	{{.Status}}"
+sudo -iu "$SYSTEM_USERNAME" podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 
 echo "[+] Container health status:"
 sudo -iu "$SYSTEM_USERNAME" bash -c 'podman inspect --format "{{.Name}}: {{if .State.Healthcheck}}Health={{.State.Healthcheck.Status}}{{else}}No healthcheck{{end}}" $(podman ps -q)'
