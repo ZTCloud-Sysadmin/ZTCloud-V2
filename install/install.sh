@@ -36,8 +36,10 @@ REQUIRED_ENV_VARS=(
   ETCD_IMAGE ETCD_NAME ETCD_CLIENT_PORT ETCD_NODE_NAME ETCD_CLUSTER_TOKEN
   COREDNS_IMAGE COREDNS_NAME COREDNS_TCP_PORT COREDNS_UDP_PORT
   CADDY_IMAGE CADDY_NAME CADDY_ADMIN_PORT CADDY_HTTPS_PORT
+  ZTCLP_IMAGE ZTCLP_NAME ZTCLP_ADMIN_PORT
   TLS_EMAIL BASE_DOMAIN
 )
+
 
 missing=0
 for var in "${REQUIRED_ENV_VARS[@]}"; do
@@ -230,7 +232,7 @@ echo "[*] Template rendering complete ✅"
 # ===========================
 echo "[*] All config files found. Launching stack with Podman Compose..."
 
-COMPOSE_FILE="$INSTALLER_PATH/install/config/ztcloud-compose.yaml"
+COMPOSE_FILE="$ZT_COMPOSE_DEST"
 
 if [[ ! -f "$COMPOSE_FILE" ]]; then
   echo "[FAIL] Compose file not found at $COMPOSE_FILE"
@@ -246,10 +248,27 @@ echo "[*] Stack launched successfully ✅"
 # Post-launch container summary + health
 # ===========================
 echo "[+] Services running via Podman (as $SYSTEM_USERNAME):"
-sudo -iu "$SYSTEM_USERNAME" podman ps --format "table {{.Names}}	{{.Image}}	{{.Status}}"
+sudo -iu "$SYSTEM_USERNAME" podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 
 echo "[+] Container health status:"
 sudo -iu "$SYSTEM_USERNAME" bash -c 'podman inspect --format "{{.Name}}: {{if .State.Healthcheck}}Health={{.State.Healthcheck.Status}}{{else}}No healthcheck{{end}}" $(podman ps -q)'
+
+# ===========================
+# OS Hardening and Init Adjustments
+# ===========================
+INIT_SCRIPT="$INSTALLER_PATH/install/scripts/init.sh"
+
+if [[ -f "$INIT_SCRIPT" ]]; then
+  if [[ ! -x "$INIT_SCRIPT" ]]; then
+    echo "[WARN] Init script is not executable, fixing permissions..."
+    chmod +x "$INIT_SCRIPT"
+  fi
+  echo "[*] Running init script for OS hardening and system tweaks..."
+  bash "$INIT_SCRIPT"
+  echo "[OK] Init script executed ✅"
+else
+  echo "[WARN] Init script not found at $INIT_SCRIPT — skipping OS tweaks"
+fi
 
 # ===========================
 # Register systemd unit

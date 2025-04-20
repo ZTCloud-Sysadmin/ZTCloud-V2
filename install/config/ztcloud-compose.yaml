@@ -65,6 +65,16 @@ services:
     networks:
       - ztcloud
 
+  ztcl-panel:
+    image: ${ZTCLP_IMAGE:-docker.io/library/python:3.12-alpine}
+    container_name: ${ZTCLP_NAME:-ztcl-panel}
+    ports:
+      - "${ZTCLP_ADMIN_PORT:-8000}:8000"
+    command: python3 -m http.server 8000
+    restart: unless-stopped
+    networks:
+      - ztcloud
+
   #ztcldns:
   #  image: ${ZTCLDNS_IMAGE:-ztcldns:latest}
   #  container_name: ${ZTCLDNS_NAME:-ztcldns}
