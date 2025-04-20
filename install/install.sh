@@ -211,6 +211,28 @@ done
 
 echo "[*] Template rendering complete ✅"
 
+# ===========================
+# Podman Registries Configuration
+# ===========================
+echo "[*] Configuring Podman registries.conf..."
+
+REGISTRY_TEMPLATE="$INSTALLER_PATH/install/config/templates/sys/podman/registries.conf.template"
+REGISTRY_RENDERED="$INSTALLER_PATH/install/config/sys/podman/registries.conf"
+REGISTRY_TARGET="/etc/containers/registries.conf"
+
+# Make sure the target folder exists
+mkdir -p "$(dirname "$REGISTRY_RENDERED")"
+
+if [[ -f "$REGISTRY_TEMPLATE" ]]; then
+  echo "[*] Rendering: $REGISTRY_TEMPLATE → $REGISTRY_RENDERED"
+  envsubst < "$REGISTRY_TEMPLATE" > "$REGISTRY_RENDERED"
+
+  echo "[*] Copying rendered registries.conf to $REGISTRY_TARGET"
+  sudo cp "$REGISTRY_RENDERED" "$REGISTRY_TARGET"
+else
+  echo "[WARN] Podman registries.conf.template not found — skipping registry config"
+fi
+
 
 # ===========================
 # Verify Rendered Files Exist
