@@ -126,6 +126,22 @@ else
 fi
 
 # ===========================
+# Pre-render headscale config.yaml with envsubst
+# ===========================
+echo "[*] Rendering headscale config.yaml using envsubst..."
+HEADSCALE_TEMPLATE="$INSTALLER_PATH/install/config/templates/sys/headscale.config.template.yaml"
+HEADSCALE_RENDERED="$DATA_PATH/headscale/config.yaml"
+
+if [[ -f "$HEADSCALE_TEMPLATE" ]]; then
+  mkdir -p "$DATA_PATH/headscale"
+  envsubst < "$HEADSCALE_TEMPLATE" > "$HEADSCALE_RENDERED"
+  echo "[OK] headscale config.yaml rendered to $HEADSCALE_RENDERED"
+else
+  echo "[FAIL] Missing headscale config template: $HEADSCALE_TEMPLATE"
+  exit 1
+fi
+
+# ===========================
 # Launch with Podman Compose
 # ===========================
 echo "[*] All config files found. Launching stack with Podman Compose..."
@@ -143,7 +159,11 @@ podman-compose -f "$COMPOSE_FILE" up -d
 echo "[*] Stack launched successfully ✅"
 
 # ===========================
-# Post-launch container summary
+# Post-launch container summary + health
 # ===========================
 echo "[+] Services running via Podman:"
 podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+
+# Optionally show health status if available
+echo "[+] Container health status:"
+podman inspect --format '{{.Name}}: {{if .State.Healthcheck}}Health={{.State.Healthcheck.Status}}{{else}}No healthcheck{{end}}' $(podman ps -q)

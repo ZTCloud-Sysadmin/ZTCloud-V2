@@ -17,27 +17,61 @@ fi
 # Ensure required system packages
 echo "[*] Installing required packages"
 apt-get update -qq
-apt-get install -y -qq curl sudo podman jq gettext-base git
+apt-get install -y -qq curl sudo podman jq gettext-base git dbus-x11
 
-# === Interactive Config Input ===
-echo "[*] Gathering installer settings..."
+# ===========================
+# Parse CLI flags
+# ===========================
+SKIP_CONFIG=false
+AUTO_APPROVE=false
 
-read -rp "Installer path [default: /opt/ztcl]: " INSTALLER_PATH_INPUT
-INSTALLER_PATH="${INSTALLER_PATH_INPUT:-/opt/ztcl}"
+for arg in "$@"; do
+  case "$arg" in
+    --skipconfig) SKIP_CONFIG=true ;;
+    --yes) AUTO_APPROVE=true ;;
+  esac
+done
 
-read -rp "System username [default: ztcl-sysadmin]: " SYSTEM_USERNAME_INPUT
-SYSTEM_USERNAME="${SYSTEM_USERNAME_INPUT:-ztcl-sysadmin}"
+# ===========================
+# Gather or apply config
+# ===========================
+if [[ "$SKIP_CONFIG" == "true" ]]; then
+  echo "[*] Running in --skipconfig mode: using default values"
+  INSTALLER_PATH="/opt/ztcl"
+  SYSTEM_USERNAME="ztcl-sysadmin"
+  ZTCL_VERSION="origin/main"
+else
+  echo "[*] Gathering installer settings..."
 
-read -rp "ZTCL version or branch to clone [default: origin/main]: " ZTCL_VERSION_INPUT
-ZTCL_VERSION="${ZTCL_VERSION_INPUT:-origin/main}"
+  read -rp "Installer path [default: /opt/ztcl]: " INSTALLER_PATH_INPUT
+  INSTALLER_PATH="${INSTALLER_PATH_INPUT:-/opt/ztcl}"
+
+  read -rp "System username [default: ztcl-sysadmin]: " SYSTEM_USERNAME_INPUT
+  SYSTEM_USERNAME="${SYSTEM_USERNAME_INPUT:-ztcl-sysadmin}"
+
+  read -rp "ZTCL version or branch to clone [default: origin/main]: " ZTCL_VERSION_INPUT
+  ZTCL_VERSION="${ZTCL_VERSION_INPUT:-origin/main}"
+fi
 
 # Strip "origin/" prefix if provided
 ZTCL_BRANCH="${ZTCL_VERSION#origin/}"
 
 # === Create user if needed (before chown) ===
 if ! id "$SYSTEM_USERNAME" &>/dev/null; then
-  echo "[*] Creating system user $SYSTEM_USERNAME"
-  useradd -m -s /bin/bash "$SYSTEM_USERNAME"
+  if [[ "$AUTO_APPROVE" == "true" ]]; then
+    echo "[*] Creating system user $SYSTEM_USERNAME (auto-approved)"
+    useradd -m -s /bin/bash "$SYSTEM_USERNAME"
+  else
+    read -rp "[?] Create system user '$SYSTEM_USERNAME'? [y/N]: " confirm
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+      useradd -m -s /bin/bash "$SYSTEM_USERNAME"
+    else
+      echo "[!] User creation aborted."
+      exit 1
+    fi
+  fi
+else
+  echo "[*] User $SYSTEM_USERNAME already exists"
 fi
 
 # Ensure pipx path is available for the system user
@@ -76,10 +110,6 @@ chmod 440 "/etc/sudoers.d/$SYSTEM_USERNAME"
 # Enable lingering for systemd user services (for rootless Podman)
 echo "[*] Enabling lingering for $SYSTEM_USERNAME"
 loginctl enable-linger "$SYSTEM_USERNAME"
-
-# Install dbus-x11 to clean up Podman systemd/dbus warnings
-echo "[*] Installing dbus-x11 to silence Podman warnings"
-apt-get install -y -qq dbus-x11
 
 # Enable Podman socket
 systemctl enable --now podman.socket
