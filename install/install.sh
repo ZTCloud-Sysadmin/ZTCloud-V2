@@ -167,20 +167,40 @@ else
 fi
 
 # ===========================
-# Pre-render headscale config.yaml with envsubst
+# Template Rendering
 # ===========================
-echo "[*] Rendering headscale config.yaml using envsubst..."
-HEADSCALE_TEMPLATE="$INSTALLER_PATH/install/config/templates/sys/headscale.config.template.yaml"
-HEADSCALE_RENDERED="$DATA_PATH/headscale/config.yaml"
+echo "[*] Rendering configuration templates..."
 
-if [[ -f "$HEADSCALE_TEMPLATE" ]]; then
-  mkdir -p "$DATA_PATH/headscale"
-  envsubst < "$HEADSCALE_TEMPLATE" > "$HEADSCALE_RENDERED"
-  echo "[OK] headscale config.yaml rendered to $HEADSCALE_RENDERED"
-else
-  echo "[FAIL] Missing headscale config template: $HEADSCALE_TEMPLATE"
-  exit 1
-fi
+TEMPLATE_DIR="$INSTALLER_PATH/install/config/templates/sys"
+
+declare -A TEMPLATE_TARGETS=(
+  [Caddyfile.template.json]="caddy"
+  [Corefile.template]="coredns"
+  [headscale.config.template.yaml]="headscale:config.yaml"
+  [derpmap.template.json]="headscale"
+)
+
+find "$TEMPLATE_DIR" -type f -name "*.template*" | while read -r template; do
+  filename="$(basename "$template")"
+  mapping="${TEMPLATE_TARGETS[$filename]:-misc}"
+  subdir="${mapping%%:*}"
+  override_name="${mapping#*:}"
+
+  if [[ "$mapping" == *:* && "$override_name" != "$mapping" ]]; then
+    rendered_name="$override_name"
+  else
+    rendered_name="${filename/.template/}"
+  fi
+
+  output_dir="$DATA_PATH/$subdir"
+  output_path="$output_dir/$rendered_name"
+
+  echo "[*] Rendering: $template → $output_path"
+  mkdir -p "$output_dir"
+  envsubst < "$template" > "$output_path"
+done
+
+echo "[*] Template rendering complete ✅"
 
 # ===========================
 # Launch with Podman Compose
@@ -202,9 +222,8 @@ echo "[*] Stack launched successfully ✅"
 # ===========================
 # Post-launch container summary + health
 # ===========================
-echo "[+] Services running via Podman:"
-podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+echo "[+] Services running via Podman (as $SYSTEM_USERNAME):"
+sudo -iu "$SYSTEM_USERNAME" podman ps --format "table {{.Names}}	{{.Image}}	{{.Status}}"
 
-# Optionally show health status if available
 echo "[+] Container health status:"
-podman inspect --format '{{.Name}}: {{if .State.Healthcheck}}Health={{.State.Healthcheck.Status}}{{else}}No healthcheck{{end}}' $(podman ps -q)
+sudo -iu "$SYSTEM_USERNAME" bash -c 'podman inspect --format "{{.Name}}: {{if .State.Healthcheck}}Health={{.State.Healthcheck.Status}}{{else}}No healthcheck{{end}}" $(podman ps -q)'

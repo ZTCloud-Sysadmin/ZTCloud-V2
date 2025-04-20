@@ -68,9 +68,9 @@ services:
       - "${CADDY_ADMIN_PORT:-2019}:2019"
       - "${CADDY_HTTPS_PORT:-443}:443"
     volumes:
-      - "${DATA_PATH:-/opt/containers/sys}/caddy/data:/data"
-      - "${DATA_PATH:-/opt/containers/sys}/caddy/containers:/sync/caddy/containers"
-    restart: unless-stopped
+    - "${DATA_PATH:-/opt/containers/sys}/caddy/data:/data"
+    - "${DATA_PATH:-/opt/containers/sys}/caddy/Caddyfile.json:/etc/caddy/Caddyfile.json"
+    
     networks:
       - ztcloud
 
