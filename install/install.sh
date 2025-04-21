@@ -2,15 +2,10 @@
 set -euo pipefail
 
 # ===========================
-# Load config and env
+# Load config and env first
 # ===========================
 CONFIG_FILE="/opt/ztcl/sys/config/config.sh"
 ENV_FILE="/opt/ztcl/sys/config/.env"
-
-# Load and validate ownership
-source "$INSTALLER_PATH/install/scripts/permission_check.sh"
-fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
-
 
 if [[ -f "$CONFIG_FILE" ]]; then
   source "$CONFIG_FILE"
@@ -27,6 +22,17 @@ else
 fi
 
 # ===========================
+# Run ownership check
+# ===========================
+PERM_CHECK_SCRIPT="$INSTALLER_PATH/install/scripts/permission_check.sh"
+if [[ -f "$PERM_CHECK_SCRIPT" ]]; then
+  source "$PERM_CHECK_SCRIPT"
+  fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
+else
+  echo "[!] permission_check.sh not found — skipping ownership check"
+fi
+
+# ===========================
 # Setup logging
 # ===========================
 mkdir -p "$INSTALLER_PATH/logs"
@@ -40,6 +46,7 @@ log() {
 
 DEBUG="${DEBUG:-false}"
 [[ "$DEBUG" == "true" ]] && log "[*] DEBUG mode is enabled"
+
 
 # ===========================
 # Validate .env
