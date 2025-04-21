@@ -6,25 +6,9 @@ set -euo pipefail
 export PATH="$PATH:/usr/local/bin:/root/.local/bin"
 
 # ===========================
-# Load config and .env
+# Load .env and derived config
 # ===========================
-CONFIG_FILE="$(dirname "$0")/config.sh"
-if [[ -f "$CONFIG_FILE" ]]; then
-  source "$CONFIG_FILE"
-else
-  echo "[!] config.sh not found at $CONFIG_FILE"
-  exit 1
-fi
-
-ENV_FILE="$(dirname "$0")/config/.env"
-if [[ -f "$ENV_FILE" ]]; then
-  set -o allexport
-  source "$ENV_FILE"
-  set +o allexport
-else
-  echo "[!] .env file not found at $ENV_FILE"
-  exit 1
-fi
+source /opt/ztcl/sys/config/load_config.sh
 
 # ===========================
 # Validate required environment variables from .env
@@ -40,14 +24,12 @@ REQUIRED_ENV_VARS=(
   TLS_EMAIL BASE_DOMAIN
 )
 
-
 missing=0
 for var in "${REQUIRED_ENV_VARS[@]}"; do
   if [[ -z "${!var:-}" ]]; then
     echo "[FAIL] Missing required .env variable: $var"
     missing=1
   fi
-
 done
 
 if [[ "$missing" -eq 1 ]]; then
@@ -56,6 +38,7 @@ if [[ "$missing" -eq 1 ]]; then
 else
   echo "[OK] All required .env variables are set."
 fi
+
 
 # Check if current user matches SYSTEM_USERNAME
 CURRENT_USER="$(whoami)"
@@ -217,14 +200,6 @@ else
   exit 1
 fi
 
-# Copy .env to sys path (DATA_PATH)
-if [[ -f "$INSTALLER_PATH/install/config/.env" ]]; then
-  echo "[*] Copying .env to $DATA_PATH/.env"
-  cp "$INSTALLER_PATH/install/config/.env" "$DATA_PATH/.env"
-else
-  echo "[WARN] .env file not found at install/config/.env — skipping copy"
-fi
-
 echo "[*] Template rendering complete ✅"
 
 # ===========================
@@ -232,7 +207,7 @@ echo "[*] Template rendering complete ✅"
 # ===========================
 echo "[*] All config files found. Launching stack with Podman Compose..."
 
-COMPOSE_FILE="$ZT_COMPOSE_DEST"
+# COMPOSE_FILE already set from load_config.sh
 
 if [[ ! -f "$COMPOSE_FILE" ]]; then
   echo "[FAIL] Compose file not found at $COMPOSE_FILE"
