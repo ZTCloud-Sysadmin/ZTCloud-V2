@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ===========================
-# Load config + env + logging
+# Load config + env + log setup
 # ===========================
 source /opt/ztcl/install/scripts/load_config.sh
 
@@ -22,7 +22,7 @@ log "IS_MASTER: $IS_MASTER"
 log "========================================"
 
 # ===========================
-# Validate required vars
+# Validate required variables
 # ===========================
 REQUIRED_VARS=(
   ZTCL_NETWORK
@@ -47,18 +47,17 @@ fi
 # Create Headscale user if needed
 # ===========================
 log "[*] Checking if Headscale user '$ZTCL_NETWORK' exists..."
-
 if podman exec "$HEADSCALE_NAME" headscale users list | grep -q "\"$ZTCL_NETWORK\""; then
   log "[~] User '$ZTCL_NETWORK' already exists"
 else
-  log "[+] Creating user '$ZTCL_NETWORK'..."
+  log "[+] Creating user '$ZTCL_NETWORK' in Headscale..."
   podman exec "$HEADSCALE_NAME" headscale users create "$ZTCL_NETWORK"
 fi
 
 # ===========================
-# Reuse or generate preauthkey
+# Reuse or generate preauth key
 # ===========================
-log "[*] Checking for reusable preauth key..."
+log "[*] Looking for reusable auth key..."
 
 PREAUTH_LIST=$(podman exec "$HEADSCALE_NAME" headscale preauthkeys list \
   --user "$ZTCL_NETWORK" --output json || echo "null")
@@ -68,19 +67,19 @@ EXISTING_KEY=$(echo "$PREAUTH_LIST" \
   | head -n 1)
 
 if [[ -n "$EXISTING_KEY" ]]; then
-  log "[~] Found reusable auth key"
+  log "[~] Found existing reusable auth key"
   AUTH_KEY="$EXISTING_KEY"
 else
-  log "[+] Creating new auth key for '$ZTCL_NETWORK'..."
+  log "[+] Generating new auth key..."
   AUTH_KEY=$(podman exec "$HEADSCALE_NAME" headscale preauthkeys create \
     --reusable --expiration 168h --user "$ZTCL_NETWORK" --output json \
     | jq -r .key)
 fi
 
 # ===========================
-# Connect to Headscale
+# Connect to Headscale via Tailscale
 # ===========================
-log "[+] Running 'tailscale up' with $HEADSCALE_SERVER_URL..."
+log "[+] Running 'tailscale up'..."
 sudo tailscale up \
   --login-server "$HEADSCALE_SERVER_URL" \
   --authkey "$AUTH_KEY" \
@@ -89,14 +88,14 @@ sudo tailscale up \
 # ===========================
 # Self-test
 # ===========================
-log "[*] Verifying Tailscale connection..."
+log "[*] Running Tailscale self-test..."
 TAILSCALE_IP=$(tailscale ip -4 | head -n 1)
 
 if [[ "$TAILSCALE_IP" =~ ^100\. ]]; then
-  log "[✔] Tailscale IP assigned: $TAILSCALE_IP"
+  log "[✔] Connected to Headscale mesh with IP: $TAILSCALE_IP"
 else
-  log "[✖] Tailscale IP missing or invalid"
+  log "[✖] Tailscale IP not assigned or invalid"
   exit 1
 fi
 
-log "[✓] Tailscale setup complete"
+log "[✓] Tailscale setup completed successfully"

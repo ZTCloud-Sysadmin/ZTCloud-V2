@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -euo pipefail
 
 # ===========================
@@ -7,7 +6,7 @@ set -euo pipefail
 # ===========================
 source /opt/ztcl/install/scripts/load_config.sh
 
-LOG_FILE="$INSTALLER_PATH/logs/ztcl-install.log"
+LOG_FILE="$LOG_DIR/ztcl-install.log"
 touch "$LOG_FILE"
 chmod 600 "$LOG_FILE"
 
@@ -67,11 +66,10 @@ if [[ "$CURRENT_USER" != "$SYSTEM_USERNAME" ]]; then
   exec sudo -u "$SYSTEM_USERNAME" bash "$0"
 fi
 
-
 # ===========================
 # Configure unprivileged port access
 # ===========================
-log "[*] Configuring port privileges for $SYSTEM_USERNAME..."
+log "[*] Configuring unprivileged port access..."
 
 SYSCTL_LINE="net.ipv4.ip_unprivileged_port_start=53"
 SYSCTL_FILE="/etc/sysctl.conf"
@@ -107,7 +105,7 @@ fi
 if command -v podman &>/dev/null && podman info --log-level=error &>/dev/null; then
   log "[OK] Podman is accessible"
 else
-  log "[WARN] Podman not working fully"
+  log "[WARN] Podman installed but not responding properly"
 fi
 
 # ===========================
@@ -122,16 +120,17 @@ if ! command -v podman-compose &>/dev/null; then
   export PATH="$PATH:$HOME/.local/bin"
   pipx install podman-compose || true
   if ! command -v podman-compose &>/dev/null; then
-    log "[FAIL] podman-compose unavailable after install"
+    log "[FAIL] podman-compose still not found after install"
     exit 1
   fi
 fi
-log "[OK] podman-compose available"
+log "[OK] podman-compose is available"
 
 # ===========================
 # Render templates
 # ===========================
-log "[*] Rendering config templates..."
+log "[*] Rendering configuration templates..."
+
 TEMPLATE_DIR="$INSTALLER_PATH/install/config/templates/sys"
 declare -A TEMPLATE_TARGETS=(
   [Caddyfile.template.json]="caddy"
@@ -169,31 +168,32 @@ log "[✓] Stack launched successfully"
 # ===========================
 # Post-launch container status
 # ===========================
-log "[+] Running containers:"
+log "[+] Services running via Podman:"
 sudo -iu "$SYSTEM_USERNAME" podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 
 log "[+] Container health summary:"
 sudo -iu "$SYSTEM_USERNAME" bash -c 'podman inspect --format "{{.Name}}: {{if .State.Healthcheck}}Health={{.State.Healthcheck.Status}}{{else}}No healthcheck{{end}}" $(podman ps -q)'
 
 # ===========================
-# Init + Firewall scripts
+# Run Init and Firewall Scripts
 # ===========================
-INIT="$INSTALLER_PATH/install/scripts/init.sh"
-FIREWALL="$INSTALLER_PATH/install/scripts/firewall.sh"
+INIT_SCRIPT="$INSTALLER_PATH/install/scripts/init.sh"
+FIREWALL_SCRIPT="$INSTALLER_PATH/install/scripts/firewall.sh"
 
-[[ -x "$INIT" ]] || chmod +x "$INIT"
-[[ -f "$INIT" ]] && log "[*] Running init..." && bash "$INIT" && log "[✓] Init done"
-[[ -f "$FIREWALL" ]] && log "[*] Running firewall setup..." && bash "$FIREWALL" --log && log "[✓] Firewall applied"
+[[ -x "$INIT_SCRIPT" ]] || chmod +x "$INIT_SCRIPT"
+[[ -f "$INIT_SCRIPT" ]] && log "[*] Running init script..." && bash "$INIT_SCRIPT" && log "[✓] Init complete"
+
+[[ -f "$FIREWALL_SCRIPT" ]] && log "[*] Running firewall script..." && bash "$FIREWALL_SCRIPT" && log "[✓] Firewall applied"
 
 # ===========================
-# Final install cleanup
+# Final cleanup (if FINAL_CHECK enabled)
 # ===========================
 if [[ "${FINAL_CHECK:-false}" == "true" ]]; then
-  log "[✓] FINAL_CHECK=true — cleaning up install dir"
+  log "[✓] FINAL_CHECK=true — cleaning up install directory"
   rm -rf "$INSTALLER_PATH/install"
   log "[✓] Removed: $INSTALLER_PATH/install"
 else
-  log "[!] FINAL_CHECK=false — keeping installer directory"
+  log "[!] FINAL_CHECK=false — keeping installer directory for debugging"
 fi
 
 log "========================================"
