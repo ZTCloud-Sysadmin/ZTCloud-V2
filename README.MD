@@ -34,7 +34,7 @@ fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
 tailscale status
 tailscale ip -4
 ```
-cc
+ccc
 
 
 
@@ -43,6 +43,8 @@ ztcl-status                    # human-readable
 ztcl-status --user             # run all checks for SYSTEM_USERNAME
 ztcl-status --json             # JSON output
 ztcl-status --user --json      # JSON output as SYSTEM_USERNAME
+
+ztcl-status --ztcl-sysadmin
 
 # compose_logs
 sudo journalctl -u ztcloud -n 100 --no-pager

@@ -67,11 +67,11 @@ RESOLVED_FILE="$INSTALLER_PATH/sys/ztcloud-compose.resolved.yaml"
 UFW_STATUS="$(ufw status | head -n1 || echo "unknown")"
 
 # ===========================
-# JSON output block
+# JSON output
 # ===========================
 if [[ "$JSON" == "true" ]]; then
-  CONTAINERS_JSON=$(run_user_cmd "podman ps --format '{{json .}}'" | jq -s '.' || echo '[]')
-  HEALTH_JSON=$(run_user_cmd 'bash -c '\''podman inspect --format "{\"name\":\"{{.Name}}\",\"health\":\"{{if .State.Healthcheck}}{{.State.Healthcheck.Status}}{{else}}no-healthcheck{{end}}\"}" $(podman ps -q)'\'' | jq -s '.' || echo '[]')
+  CONTAINERS_JSON=$(run_user_cmd 'podman ps --format "{{json .}}"' | jq -s '.' || echo '[]')
+  HEALTH_JSON=$(run_user_cmd 'podman inspect --format "{\"name\":\"{{.Name}}\",\"health\":\"{{if .State.Healthcheck}}{{.State.Healthcheck.Status}}{{else}}no-healthcheck{{end}}\"}" $(podman ps -q)' | jq -s '.' || echo '[]')
 
   jq -n \
     --arg tailscale "$TSC_IP" \

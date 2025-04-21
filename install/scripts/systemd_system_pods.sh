@@ -16,10 +16,21 @@ log() {
 }
 
 log "========================================"
-log "[+] systemd_install.sh STARTED"
+log "[+] systemd_system_pods.sh STARTED"
 log "INSTALLER_PATH: $INSTALLER_PATH"
 log "SYSTEM_USERNAME: $SYSTEM_USERNAME"
 log "========================================"
+
+# ===========================
+# Fix runtime dir for Podman
+# ===========================
+PERM_CHECK="$INSTALLER_PATH/install/scripts/permission_check.sh"
+if [[ -f "$PERM_CHECK" ]]; then
+  source "$PERM_CHECK"
+  ensure_podman_runtime_dir
+else
+  log "[!] Missing permission_check.sh — cannot verify /run/user/UID"
+fi
 
 # ===========================
 # Define service paths
