@@ -114,7 +114,7 @@ echo "[*] Creating config directory at $CONFIG_DIR"
 mkdir -p "$CONFIG_DIR"
 
 # === Move .env to permanent config dir ===
-ENV_FILE="$BASE_DIR/install/config/.env"
+ENV_FILE="$INSTALLER_PATH/install/config/.env"
 if [[ -f "$ENV_FILE" ]]; then
   echo "[*] Moving .env to $PERMANENT_ENV_PATH"
   cp "$ENV_FILE" "$PERMANENT_ENV_PATH"
