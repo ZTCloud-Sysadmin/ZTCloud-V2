@@ -85,18 +85,6 @@ else
 fi
 
 # ===========================
-# Verify ownership via shared permission check
-# ===========================
-PERM_CHECK_SCRIPT="$INSTALLER_PATH/install/scripts/permission_check.sh"
-if [[ -f "$PERM_CHECK_SCRIPT" ]]; then
-  echo "[*] Running centralized permission_check.sh"
-  source "$PERM_CHECK_SCRIPT"
-  fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
-else
-  echo "[!] permission_check.sh not found — skipping ownership verification"
-fi
-
-# ===========================
 # Write config and move .env
 # ===========================
 echo "[*] Creating config directory at $CONFIG_DIR"
@@ -123,6 +111,18 @@ SYSTEM_USERNAME="$SYSTEM_USERNAME"
 ZTCL_VERSION="$ZTCL_VERSION"
 LOG_DIR="$INSTALLER_PATH/logs"
 EOF
+
+# ===========================
+# Verify ownership via shared permission check
+# ===========================
+PERM_CHECK_SCRIPT="$INSTALLER_PATH/install/scripts/permission_check.sh"
+if [[ -f "$PERM_CHECK_SCRIPT" ]]; then
+  echo "[*] Running centralized permission_check.sh"
+  source "$PERM_CHECK_SCRIPT"
+  fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
+else
+  echo "[!] permission_check.sh not found — skipping ownership verification"
+fi
 
 # ===========================
 # Enable lingering + podman socket
