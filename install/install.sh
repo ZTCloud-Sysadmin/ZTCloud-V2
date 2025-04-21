@@ -22,15 +22,17 @@ else
 fi
 
 # ===========================
-# Run ownership check
+# Run system ownership + path checks
 # ===========================
 PERM_CHECK_SCRIPT="$INSTALLER_PATH/install/scripts/permission_check.sh"
 if [[ -f "$PERM_CHECK_SCRIPT" ]]; then
   source "$PERM_CHECK_SCRIPT"
   fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
+  ensure_user_path
 else
-  echo "[!] permission_check.sh not found — skipping ownership check"
+  echo "[!] permission_check.sh not found — skipping ownership and path checks"
 fi
+
 
 # ===========================
 # Setup logging

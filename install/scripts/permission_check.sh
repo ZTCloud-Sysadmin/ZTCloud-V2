@@ -25,7 +25,7 @@ log() {
 }
 
 # ===========================
-# Reusable function
+# Fix directory ownership
 # ===========================
 fix_ownership_if_needed() {
   local target_path="${1:-$INSTALLER_PATH}"
@@ -46,5 +46,27 @@ fix_ownership_if_needed() {
     log "[✓] Ownership corrected: $target_path → $expected_owner"
   else
     log "[✓] Ownership OK: $target_path → $expected_owner"
+  fi
+}
+
+# ===========================
+# Ensure PATH for system user
+# ===========================
+ensure_user_path() {
+  local profile="/home/$SYSTEM_USERNAME/.profile"
+  local path_snippet="/usr/local/bin:/root/.local/bin:/usr/sbin:/sbin"
+
+  if [[ ! -f "$profile" ]]; then
+    log "[!] Profile not found: $profile"
+    return
+  fi
+
+  if ! grep -q "$path_snippet" "$profile"; then
+    log "[*] Extending PATH for $SYSTEM_USERNAME in $profile"
+    echo "export PATH=\"\$PATH:$path_snippet\"" >> "$profile"
+    chown "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "$profile"
+    log "[✓] PATH updated for $SYSTEM_USERNAME"
+  else
+    log "[~] PATH already configured in $profile"
   fi
 }

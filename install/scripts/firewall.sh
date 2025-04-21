@@ -2,6 +2,19 @@
 set -euo pipefail
 
 # ===========================
+# Load permission checks
+# ===========================
+PERM_CHECK_SCRIPT="/opt/ztcl/install/scripts/permission_check.sh"
+if [[ -f "$PERM_CHECK_SCRIPT" ]]; then
+  source "$PERM_CHECK_SCRIPT"
+  fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
+  ensure_user_path
+else
+  echo "[!] permission_check.sh not found — skipping ownership and path verification"
+fi
+
+
+# ===========================
 # Load config
 # ===========================
 CONFIG_FILE="/opt/ztcl/sys/config/config.sh"

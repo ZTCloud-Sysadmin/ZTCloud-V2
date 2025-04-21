@@ -69,11 +69,6 @@ usermod -aG sudo,podman "$SYSTEM_USERNAME"
 echo "$SYSTEM_USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SYSTEM_USERNAME"
 chmod 440 "/etc/sudoers.d/$SYSTEM_USERNAME"
 
-# Ensure pipx path is in user profile
-echo "[*] Updating $SYSTEM_USERNAME profile PATH"
-echo 'export PATH="$PATH:/usr/local/bin:/root/.local/bin:$PATH"' >> "/home/$SYSTEM_USERNAME/.profile"
-chown "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "/home/$SYSTEM_USERNAME/.profile"
-
 # ===========================
 # Clone ZTCL repository
 # ===========================
@@ -116,15 +111,16 @@ LOG_DIR="$INSTALLER_PATH/logs"
 EOF
 
 # ===========================
-# Verify ownership via shared permission check
+# Run permission check
 # ===========================
 PERM_CHECK_SCRIPT="$INSTALLER_PATH/install/scripts/permission_check.sh"
 if [[ -f "$PERM_CHECK_SCRIPT" ]]; then
   echo "[*] Running centralized permission_check.sh"
   source "$PERM_CHECK_SCRIPT"
   fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
+  ensure_user_path
 else
-  echo "[!] permission_check.sh not found — skipping ownership verification"
+  echo "[!] permission_check.sh not found — skipping ownership and path verification"
 fi
 
 # ===========================

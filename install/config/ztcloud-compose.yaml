@@ -70,7 +70,9 @@ services:
     container_name: ${ZTCLP_NAME:-ztcl-panel}
     ports:
       - "${ZTCLP_ADMIN_PORT:-8000}:8000"
-    command: python3 -m http.server 8000
+    command: sh -c "export PATH=/ztcl/bin:\$PATH && python3 -m http.server 8000"
+    volumes:
+      - /opt/ztcl/bin:/ztcl/bin:ro
     restart: unless-stopped
     networks:
       - ztcloud
