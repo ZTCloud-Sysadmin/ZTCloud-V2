@@ -1,32 +1,52 @@
 #!/bin/bash
-
 set -euo pipefail
 
-# Load config variables
-CONFIG_FILE="$(dirname "$0")/../config.sh"
-if [[ -f "$CONFIG_FILE" ]]; then
-  source "$CONFIG_FILE"
-else
-  echo "[!] config.sh not found at $CONFIG_FILE"
-  exit 1
-fi
+# ===========================
+# Load config, .env, and log setup
+# ===========================
+source /opt/ztcl/install/scripts/load_config.sh
 
+LOG_FILE="$LOG_DIR/ztcl-systemd.log"
+touch "$LOG_FILE"
+chmod 600 "$LOG_FILE"
+
+log() {
+  echo "$@"
+  echo "$(date +'%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE"
+}
+
+log "========================================"
+log "[+] systemd_install.sh STARTED"
+log "INSTALLER_PATH: $INSTALLER_PATH"
+log "SYSTEM_USERNAME: $SYSTEM_USERNAME"
+log "========================================"
+
+# ===========================
+# Define service paths
+# ===========================
 SERVICE_NAME="ztcloud"
 SYSTEMD_UNIT_FILE="/etc/systemd/system/$SERVICE_NAME.service"
-
-# Determine full path to podman-compose
-PODMAN_COMPOSE_PATH="$HOME/.local/bin/podman-compose"
-
-if [[ ! -x "$PODMAN_COMPOSE_PATH" ]]; then
-  echo "[!] podman-compose not found at $PODMAN_COMPOSE_PATH"
-  exit 1
-fi
-
-# Resolve working directory
+PODMAN_COMPOSE_PATH="/home/$SYSTEM_USERNAME/.local/bin/podman-compose"
 WORKING_DIR="$INSTALLER_PATH/sys"
 COMPOSE_FILE="$WORKING_DIR/ztcloud-compose.yaml"
 
-echo "[*] Creating systemd service: $SERVICE_NAME"
+# ===========================
+# Sanity check
+# ===========================
+if [[ ! -x "$PODMAN_COMPOSE_PATH" ]]; then
+  log "[!] podman-compose not found at $PODMAN_COMPOSE_PATH"
+  exit 1
+fi
+
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+  log "[!] Compose file missing: $COMPOSE_FILE"
+  exit 1
+fi
+
+# ===========================
+# Write systemd unit
+# ===========================
+log "[*] Creating systemd service: $SERVICE_NAME"
 
 cat <<EOF | sudo tee "$SYSTEMD_UNIT_FILE" > /dev/null
 [Unit]
@@ -40,19 +60,21 @@ WorkingDirectory=$WORKING_DIR
 ExecStart=/bin/bash -lc "sleep 20 && $PODMAN_COMPOSE_PATH -f $COMPOSE_FILE up"
 ExecStop=/bin/bash -lc "$PODMAN_COMPOSE_PATH -f $COMPOSE_FILE down"
 Restart=always
-Environment="PATH=$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PATH=/home/$SYSTEM_USERNAME/.local/bin:/usr/local/bin:/usr/bin:/bin"
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Reload systemd and enable service
-echo "[*] Reloading systemd daemon..."
+# ===========================
+# Reload + enable systemd service
+# ===========================
+log "[*] Reloading systemd daemon..."
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
 
-echo "[*] Enabling and starting $SERVICE_NAME.service..."
+log "[*] Enabling and starting $SERVICE_NAME.service..."
 sudo systemctl enable "$SERVICE_NAME"
 sudo systemctl start "$SERVICE_NAME"
 
-echo "[OK] systemd service installed and running ✅"
+log "[✓] systemd service installed and running"

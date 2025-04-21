@@ -17,7 +17,7 @@ fi
 # Ensure required system packages
 echo "[*] Installing required packages"
 apt-get update -qq
-apt-get install -y -qq curl sudo podman jq gettext-base git dbus-x11
+apt-get install -y -qq curl sudo podman jq gettext-base git dbus-x11 uwf
 
 # Install Tailscale
 echo "[*] Installing Tailscale (from bootstrap.sh script)"
@@ -105,8 +105,25 @@ fi
 # Fix ownership so system user has write access
 chown -R "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "$INSTALLER_PATH"
 
+# === Prepare permanent config location ===
+CONFIG_DIR="$INSTALLER_PATH/sys/config"
+CONFIG_PATH="$CONFIG_DIR/config.sh"
+PERMANENT_ENV_PATH="$CONFIG_DIR/.env"
+
+echo "[*] Creating config directory at $CONFIG_DIR"
+mkdir -p "$CONFIG_DIR"
+
+# === Move .env to permanent config dir ===
+ENV_FILE="$BASE_DIR/install/config/.env"
+if [[ -f "$ENV_FILE" ]]; then
+  echo "[*] Moving .env to $PERMANENT_ENV_PATH"
+  cp "$ENV_FILE" "$PERMANENT_ENV_PATH"
+else
+  echo "[!] .env not found at $ENV_FILE — aborting"
+  exit 1
+fi
+
 # === Write config.sh ===
-CONFIG_PATH="$INSTALLER_PATH/install/config.sh"
 echo "[*] Writing config to $CONFIG_PATH"
 cat > "$CONFIG_PATH" <<EOF
 INSTALLER_PATH="$INSTALLER_PATH"
@@ -119,6 +136,8 @@ if ! getent group podman > /dev/null; then
   echo "[*] Creating 'podman' group"
   groupadd podman
 fi
+
+echo "[✓] Bootstrap complete. Config written to: $CONFIG_DIR"
 
 # Add to groups and enable passwordless sudo
 #echo "[*] Adding $SYSTEM_USERNAME to sudo and podman groups"
