@@ -19,6 +19,18 @@ echo "[*] Installing required packages"
 apt-get update -qq
 apt-get install -y -qq curl sudo podman jq gettext-base git dbus-x11
 
+# Install Tailscale
+echo "[*] Installing Tailscale (from bootstrap.sh script)"
+curl -fsSL https://tailscale.com/install.sh | sh
+
+# Validate installation
+if ! command -v tailscale &>/dev/null; then
+  echo "[!] Tailscale installation failed"
+  exit 1
+fi
+
+tailscaled --version && echo "[*] Tailscale installed successfully"
+
 # ===========================
 # Parse CLI flags
 # ===========================
@@ -81,7 +93,14 @@ chown "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "/home/$SYSTEM_USERNAME/.profile"
 
 # === Clone repo ===
 echo "[*] Cloning ZTCL repo (branch: $ZTCL_BRANCH) to $INSTALLER_PATH"
-git clone --branch "$ZTCL_BRANCH" https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git "$INSTALLER_PATH"
+#git clone --branch "$ZTCL_BRANCH" https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git "$INSTALLER_PATH"
+
+if [[ ! -d "$INSTALLER_PATH/.git" ]]; then
+  echo "[*] Cloning ZTCL repo (branch: $ZTCL_BRANCH) to $INSTALLER_PATH"
+  git clone --branch "$ZTCL_BRANCH" https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git "$INSTALLER_PATH"
+else
+  echo "[*] Repo already exists at $INSTALLER_PATH — skipping clone"
+fi
 
 # Fix ownership so system user has write access
 chown -R "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "$INSTALLER_PATH"
@@ -102,9 +121,16 @@ if ! getent group podman > /dev/null; then
 fi
 
 # Add to groups and enable passwordless sudo
+#echo "[*] Adding $SYSTEM_USERNAME to sudo and podman groups"
+#usermod -aG sudo,podman "$SYSTEM_USERNAME"
+#echo "$SYSTEM_USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SYSTEM_USERNAME"
+#chmod 440 "/etc/sudoers.d/$SYSTEM_USERNAME"
+
+# Add to groups and enable passwordless sudo
 echo "[*] Adding $SYSTEM_USERNAME to sudo and podman groups"
 usermod -aG sudo,podman "$SYSTEM_USERNAME"
-echo "$SYSTEM_USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SYSTEM_USERNAME"
+
+echo "$SYSTEM_USERNAME ALL=(ALL) NOPASSWD: /usr/bin/podman, /usr/bin/tailscale" > "/etc/sudoers.d/$SYSTEM_USERNAME"
 chmod 440 "/etc/sudoers.d/$SYSTEM_USERNAME"
 
 # Enable lingering for systemd user services (for rootless Podman)

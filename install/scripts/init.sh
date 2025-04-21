@@ -2,62 +2,59 @@
 set -euo pipefail
 
 # ===========================
-# Load config and .env
+# Load config
 # ===========================
 ENV_FILE="/opt/ztcl/install/config/.env"
-
 if [ ! -f "$ENV_FILE" ]; then
-  echo "Missing .env file at $ENV_FILE"
+  echo "Missing .env file"
   exit 1
 fi
 
 export $(grep -v '^#' "$ENV_FILE" | xargs)
 
 # ===========================
-# Validate required variables
+# Validate environment
 # ===========================
 if [ -z "${ZTCL_NETWORK:-}" ]; then
-  echo "ZTCL_NETWORK is not set in .env"
+  echo "ZTCL_NETWORK not set in .env"
   exit 1
 fi
 
 if [ "${IS_MASTER:-false}" != "true" ]; then
-  echo "Not a master node. Skipping mesh network bootstrap."
+  echo "[~] Skipping mesh setup (not a master)"
   exit 0
 fi
 
 # ===========================
-# Install Tailscale
+# Headscale user and key setup
 # ===========================
-echo "[+] Installing Tailscale..."
-curl -fsSL https://tailscale.com/install.sh | sh
+echo "[+] Creating user '$ZTCL_NETWORK' in Headscale..."
+sudo podman exec headscale headscale users create "$ZTCL_NETWORK" || true
+
+echo "[+] Generating Tailscale auth key for '$ZTCL_NETWORK'..."
+AUTH_KEY=$(sudo podman exec headscale headscale preauthkeys create \
+  --reusable --expiration 168h "$ZTCL_NETWORK" | jq -r .key)
 
 # ===========================
-# Start tailscaled service
+# Join Tailscale network
 # ===========================
-echo "[+] Starting tailscaled service..."
-systemctl enable --now tailscaled
-
-# ===========================
-# Create user in Headscale
-# ===========================
-echo "[+] Creating Headscale user '$ZTCL_NETWORK'..."
-podman exec headscale headscale users create "$ZTCL_NETWORK" || true
-
-# ===========================
-# Generate Tailscale auth key
-# ===========================
-echo "[+] Generating Tailscale auth key..."
-AUTH_KEY=$(podman exec headscale headscale preauthkeys create \
-  --reusable --ephemeral --expiration 24h "$ZTCL_NETWORK" | jq -r .key)
-
-# ===========================
-# Connect to Headscale
-# ===========================
-echo "[+] Connecting to Headscale with auth key..."
-tailscale up \
+echo "[+] Running 'tailscale up'..."
+sudo tailscale up \
   --login-server http://localhost:8080 \
   --authkey "$AUTH_KEY" \
   --hostname "$ZTCL_NETWORK"
 
-echo "[✔] Master node is now connected to the Headscale mesh as '$ZTCL_NETWORK'"
+# ===========================
+# Self-test
+# ===========================
+echo "[+] Performing self-test for Tailscale connection..."
+TAILSCALE_IP=$(tailscale ip -4 | head -n 1)
+
+if [[ "$TAILSCALE_IP" =~ ^100\. ]]; then
+  echo "[✔] Connected to Headscale mesh with IP: $TAILSCALE_IP"
+else
+  echo "[✖] Invalid or missing Tailscale IP"
+  exit 1
+fi
+
+echo "[✓] Tailscale setup completed successfully."
