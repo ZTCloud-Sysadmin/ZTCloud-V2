@@ -1,0 +1,146 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# Define base paths
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$BASE_DIR/install/config/.env"
+
+# Load environment from .env if it exists
+if [[ -f "$ENV_FILE" ]]; then
+  echo "[*] Loading environment variables from .env"
+  set -o allexport
+  source "$ENV_FILE"
+  set +o allexport
+fi
+
+# Ensure required system packages
+echo "[*] Installing required packages"
+apt-get update -qq
+apt-get install -y -qq curl sudo podman jq gettext-base git dbus-x11
+
+# Install Tailscale
+echo "[*] Installing Tailscale (from bootstrap.sh script)"
+curl -fsSL https://tailscale.com/install.sh | sh
+
+# Validate installation
+if ! command -v tailscale &>/dev/null; then
+  echo "[!] Tailscale installation failed"
+  exit 1
+fi
+
+tailscaled --version && echo "[*] Tailscale installed successfully"
+
+# ===========================
+# Parse CLI flags
+# ===========================
+SKIP_CONFIG=false
+AUTO_APPROVE=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --skipconfig) SKIP_CONFIG=true ;;
+    --yes) AUTO_APPROVE=true ;;
+  esac
+done
+
+# ===========================
+# Gather or apply config
+# ===========================
+if [[ "$SKIP_CONFIG" == "true" ]]; then
+  echo "[*] Running in --skipconfig mode: using default values"
+  INSTALLER_PATH="/opt/ztcl"
+  SYSTEM_USERNAME="ztcl-sysadmin"
+  ZTCL_VERSION="origin/main"
+else
+  echo "[*] Gathering installer settings..."
+
+  read -rp "Installer path [default: /opt/ztcl]: " INSTALLER_PATH_INPUT
+  INSTALLER_PATH="${INSTALLER_PATH_INPUT:-/opt/ztcl}"
+
+  read -rp "System username [default: ztcl-sysadmin]: " SYSTEM_USERNAME_INPUT
+  SYSTEM_USERNAME="${SYSTEM_USERNAME_INPUT:-ztcl-sysadmin}"
+
+  read -rp "ZTCL version or branch to clone [default: origin/main]: " ZTCL_VERSION_INPUT
+  ZTCL_VERSION="${ZTCL_VERSION_INPUT:-origin/main}"
+fi
+
+# Strip "origin/" prefix if provided
+ZTCL_BRANCH="${ZTCL_VERSION#origin/}"
+
+# === Create user if needed (before chown) ===
+if ! id "$SYSTEM_USERNAME" &>/dev/null; then
+  if [[ "$AUTO_APPROVE" == "true" ]]; then
+    echo "[*] Creating system user $SYSTEM_USERNAME (auto-approved)"
+    useradd -m -s /bin/bash "$SYSTEM_USERNAME"
+  else
+    read -rp "[?] Create system user '$SYSTEM_USERNAME'? [y/N]: " confirm
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+      useradd -m -s /bin/bash "$SYSTEM_USERNAME"
+    else
+      echo "[!] User creation aborted."
+      exit 1
+    fi
+  fi
+else
+  echo "[*] User $SYSTEM_USERNAME already exists"
+fi
+
+# Ensure pipx path is available for the system user
+echo "[*] Ensuring /usr/local/bin is in $SYSTEM_USERNAME's PATH"
+echo 'export PATH="$PATH:/usr/local/bin:/root/.local/bin:$PATH"' >> "/home/$SYSTEM_USERNAME/.profile"
+chown "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "/home/$SYSTEM_USERNAME/.profile"
+
+# === Clone repo ===
+echo "[*] Cloning ZTCL repo (branch: $ZTCL_BRANCH) to $INSTALLER_PATH"
+#git clone --branch "$ZTCL_BRANCH" https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git "$INSTALLER_PATH"
+
+if [[ ! -d "$INSTALLER_PATH/.git" ]]; then
+  echo "[*] Cloning ZTCL repo (branch: $ZTCL_BRANCH) to $INSTALLER_PATH"
+  git clone --branch "$ZTCL_BRANCH" https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git "$INSTALLER_PATH"
+else
+  echo "[*] Repo already exists at $INSTALLER_PATH — skipping clone"
+fi
+
+# Fix ownership so system user has write access
+chown -R "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "$INSTALLER_PATH"
+
+# === Write config.sh ===
+CONFIG_PATH="$INSTALLER_PATH/install/config.sh"
+echo "[*] Writing config to $CONFIG_PATH"
+cat > "$CONFIG_PATH" <<EOF
+INSTALLER_PATH="$INSTALLER_PATH"
+SYSTEM_USERNAME="$SYSTEM_USERNAME"
+ZTCL_VERSION="$ZTCL_VERSION"
+EOF
+
+# Create podman group if needed
+if ! getent group podman > /dev/null; then
+  echo "[*] Creating 'podman' group"
+  groupadd podman
+fi
+
+# Add to groups and enable passwordless sudo
+#echo "[*] Adding $SYSTEM_USERNAME to sudo and podman groups"
+#usermod -aG sudo,podman "$SYSTEM_USERNAME"
+#echo "$SYSTEM_USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SYSTEM_USERNAME"
+#chmod 440 "/etc/sudoers.d/$SYSTEM_USERNAME"
+
+# Add to groups and enable full passwordless sudo for now
+echo "[*] Adding $SYSTEM_USERNAME to sudo and podman groups"
+usermod -aG sudo,podman "$SYSTEM_USERNAME"
+
+echo "$SYSTEM_USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SYSTEM_USERNAME"
+chmod 440 "/etc/sudoers.d/$SYSTEM_USERNAME"
+
+
+# Enable lingering for systemd user services (for rootless Podman)
+echo "[*] Enabling lingering for $SYSTEM_USERNAME"
+loginctl enable-linger "$SYSTEM_USERNAME"
+
+# Enable Podman socket
+systemctl enable --now podman.socket
+
+# === Continue to install.sh as the system user (with full login shell) ===
+echo "[*] Handing over to install.sh"
+sudo -iu "$SYSTEM_USERNAME" bash "$INSTALLER_PATH/install/install.sh"

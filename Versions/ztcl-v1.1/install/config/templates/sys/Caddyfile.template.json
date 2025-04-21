@@ -1,0 +1,43 @@
+{
+    "apps": {
+      "http": {
+        "servers": {
+          "ztcl": {
+            "listen": [":443"],
+            "routes": [
+              {
+                "@id": "example.${BASE_DOMAIN}",
+                "handle": [
+                  {
+                    "handler": "reverse_proxy",
+                    "upstreams": [
+                      {
+                        "dial": "127.0.0.1:8080"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "tls": {
+        "automation": {
+          "policies": [
+            {
+              "issuers": [
+                {
+                  "module": "internal"
+                }
+              ],
+              "subjects": [
+                "*.${BASE_DOMAIN}"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+  
