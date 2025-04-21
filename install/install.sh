@@ -53,6 +53,12 @@ else
 fi
 
 # ===========================
+# Ensure correct ownership before continuing
+# ===========================
+log "[*] Ensuring ownership of $INSTALLER_PATH..."
+sudo chown -R "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "$INSTALLER_PATH"
+
+# ===========================
 # Check correct user
 # ===========================
 CURRENT_USER="$(whoami)"
@@ -60,6 +66,7 @@ if [[ "$CURRENT_USER" != "$SYSTEM_USERNAME" ]]; then
   log "[*] install.sh must run as $SYSTEM_USERNAME. Re-executing..."
   exec sudo -u "$SYSTEM_USERNAME" bash "$0"
 fi
+
 
 # ===========================
 # Configure unprivileged port access
