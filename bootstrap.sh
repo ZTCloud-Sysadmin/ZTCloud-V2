@@ -18,7 +18,17 @@ CLONE_URL="https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git"
 # ===========================
 echo "[*] Installing required packages..."
 apt-get update -qq
-apt-get install -y -qq curl sudo podman jq gettext-base git dbus-x11 ufw yamllint
+apt-get install -y -qq \
+  curl \
+  sudo \
+  podman \
+  jq \
+  gettext-base \
+  git \
+  dbus-x11 \
+  ufw \
+  yamllint \
+  pipx
 
 # ===========================
 # Install Tailscale

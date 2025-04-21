@@ -43,8 +43,13 @@ command -v podman >/dev/null || { log "[FAIL] Podman not found"; exit 1; }
 # ===========================
 if ! command -v podman-compose &>/dev/null; then
   log "[*] Installing podman-compose..."
-  sudo apt-get install -y -qq pipx
   pipx install podman-compose
+
+  # Export local bin path temporarily and persist for later
+  export PATH="$HOME/.local/bin:$PATH"
+  echo 'export PATH="$HOME/.local/bin:$PATH"' >> "/home/$SYSTEM_USERNAME/.profile"
+  chown "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "/home/$SYSTEM_USERNAME/.profile"
+  log "[*] PATH updated: $PATH"
 fi
 
 command -v podman-compose &>/dev/null || { log "[FAIL] podman-compose not available after install"; exit 1; }
@@ -116,7 +121,7 @@ if [[ "$TEMPLATE_ERRORS" -gt 0 ]]; then
   exit 1
 fi
 
-log "[*] Template summary:"
+log "[*] Template render summary:"
 for entry in "${RENDER_SUMMARY[@]}"; do log " - $entry"; done
 
 # ===========================
