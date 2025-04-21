@@ -52,9 +52,12 @@ fi
 # Reuse or generate preauthkey
 # ===========================
 echo "[*] Looking for reusable preauth key..."
-EXISTING_KEY=$(podman exec "$HEADSCALE_NAME" headscale preauthkeys list \
-  --user "$ZTCL_NETWORK" --output json \
-  | jq -r '.[] | select(.reusable == true and .expired == false) | .key' \
+
+PREAUTH_LIST=$(podman exec "$HEADSCALE_NAME" headscale preauthkeys list \
+  --user "$ZTCL_NETWORK" --output json || echo "null")
+
+EXISTING_KEY=$(echo "$PREAUTH_LIST" \
+  | jq -r 'if type=="array" then .[] | select(.reusable == true and .expired == false) | .key else empty end' \
   | head -n 1)
 
 if [[ -n "$EXISTING_KEY" ]]; then
@@ -89,4 +92,4 @@ else
   exit 1
 fi
 
-echo "[✓] Master node '$ZTCL_NETWORK' successfully joined the mesh!"
+echo "[✓] Tailscale setup completed successfully."
