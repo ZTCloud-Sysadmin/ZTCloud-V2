@@ -112,14 +112,13 @@ echo "[*] Handing over to podman.sh (running as $SYSTEM_USERNAME)..."
 sudo -iu "$SYSTEM_USERNAME" bash "$INSTALLER_PATH/install/scripts/podman.sh"
 
 # ===========================
-# OS Hardening and Init
+# Initializing ZTCL Mesh
 # ===========================
-INIT_SCRIPT="$INSTALLER_PATH/install/scripts/init.sh"
-if [[ -f "$INIT_SCRIPT" ]]; then
-  chmod +x "$INIT_SCRIPT"
-  echo "[*] Running init script..."
-  bash "$INIT_SCRIPT"
-  echo "[OK] Init script completed"
+ZTCL_MESH_SCRIPT="$INSTALLER_PATH/install/scripts/ztcl_mesh.sh"
+
+if [[ -f "$ZTCL_MESH_SCRIPT" ]]; then
+  echo "[*] Running ztcl_mesh.sh to bootstrap the mesh..."
+  bash "$ZTCL_MESH_SCRIPT"
 else
-  echo "[WARN] No init.sh found — skipping"
+  echo "[WARN] Mesh script not found at $ZTCL_MESH_SCRIPT — skipping"
 fi

@@ -4,18 +4,12 @@ set -euo pipefail
 # ===========================
 # Load config
 # ===========================
-ENV_FILE="/opt/ztcl/install/config/.env"
-if [ ! -f "$ENV_FILE" ]; then
-  echo "[✖] Missing .env file: $ENV_FILE"
-  exit 1
-fi
-
-export $(grep -v '^#' "$ENV_FILE" | xargs)
+source /opt/ztcl/sys/config/load_config.sh
 
 # ===========================
 # Validate environment
 # ===========================
-echo "[*] Validating .env config..."
+echo "[*] Validating environment for mesh bootstrap..."
 
 REQUIRED_VARS=(
   ZTCL_NETWORK
