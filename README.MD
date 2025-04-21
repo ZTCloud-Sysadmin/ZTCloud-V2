@@ -20,6 +20,7 @@ sudo -iu ztcl-sysadmin bash -c 'podman inspect --format "{{.Name}}: {{if .State.
 
 ```bash
 sudo -iu ztcl-sysadmin podman logs coredns
+sudo -iu ztcl-sysadmin podman restart headscale
 ```
 
 ```bash
