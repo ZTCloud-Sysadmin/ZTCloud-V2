@@ -39,8 +39,9 @@ else
   echo "[OK] All required .env variables are set."
 fi
 
-
-# Check if current user matches SYSTEM_USERNAME
+# ===========================
+# Ensure script runs as SYSTEM_USERNAME
+# ===========================
 CURRENT_USER="$(whoami)"
 if [[ "$CURRENT_USER" != "$SYSTEM_USERNAME" ]]; then
   echo "[*] install.sh must be run as $SYSTEM_USERNAME. Current user: $CURRENT_USER"
@@ -49,75 +50,54 @@ if [[ "$CURRENT_USER" != "$SYSTEM_USERNAME" ]]; then
 fi
 
 # ===========================
-# Unprivileged Port Access for Rootless Podman (SYSTEM_USERNAME only)
+# Unprivileged Port Access for Rootless Podman
 # ===========================
-if [[ "$CURRENT_USER" == "$SYSTEM_USERNAME" ]]; then
-  echo "[*] Configuring system to allow $SYSTEM_USERNAME to bind to privileged ports..."
+echo "[*] Configuring unprivileged port access for Podman..."
 
-  SYSCTL_LINE="net.ipv4.ip_unprivileged_port_start=53"
-  SYSCTL_FILE="/etc/sysctl.conf"
+SYSCTL_LINE="net.ipv4.ip_unprivileged_port_start=53"
+SYSCTL_FILE="/etc/sysctl.conf"
 
-  if grep -q "^net.ipv4.ip_unprivileged_port_start=" "$SYSCTL_FILE"; then
-    echo "[*] Updating existing unprivileged port setting in $SYSCTL_FILE"
-    sudo sed -i "s/^net.ipv4.ip_unprivileged_port_start=.*/$SYSCTL_LINE/" "$SYSCTL_FILE"
-  else
-    echo "[*] Appending unprivileged port setting to $SYSCTL_FILE"
-    echo "$SYSCTL_LINE" | sudo tee -a "$SYSCTL_FILE" > /dev/null
-  fi
-
-  echo "[*] Reloading sysctl settings..."
-  sudo sysctl -p > /dev/null
-  echo "[*] Verifying sysctl setting:"
-  sudo sysctl net.ipv4.ip_unprivileged_port_start
-
-  if systemctl --quiet is-active podman.socket; then
-    echo "[*] Restarting podman.socket to apply privilege changes"
-    sudo systemctl restart podman.socket
-  fi
+if grep -q "^net.ipv4.ip_unprivileged_port_start=" "$SYSCTL_FILE"; then
+  echo "[*] Updating existing setting in $SYSCTL_FILE"
+  sudo sed -i "s/^net.ipv4.ip_unprivileged_port_start=.*/$SYSCTL_LINE/" "$SYSCTL_FILE"
 else
-  echo "[WARN] Skipping unprivileged port fix — not running as $SYSTEM_USERNAME"
+  echo "[*] Appending new setting to $SYSCTL_FILE"
+  echo "$SYSCTL_LINE" | sudo tee -a "$SYSCTL_FILE" > /dev/null
 fi
 
-# All good, continue
-echo "========================================"
-echo "[+] INSTALLER PIPELINE OK"
-echo "[+] Reached install.sh"
-echo "----------------------------------------"
-echo "INSTALLER_PATH: $INSTALLER_PATH"
-echo "SYSTEM_USERNAME: $SYSTEM_USERNAME"
-echo "ZTCL_VERSION: $ZTCL_VERSION"
-echo "========================================"
+echo "[*] Reloading sysctl settings..."
+sudo sysctl -p > /dev/null
+sudo sysctl net.ipv4.ip_unprivileged_port_start
+
+if systemctl --quiet is-active podman.socket; then
+  echo "[*] Restarting podman.socket to apply changes"
+  sudo systemctl restart podman.socket
+fi
 
 # ===========================
 # Self-tests
 # ===========================
 echo "[*] Running self-tests..."
 
-# Test 1: Confirm running as correct user
-EXPECTED_USER="$SYSTEM_USERNAME"
-ACTUAL_USER="$(whoami)"
-if [[ "$ACTUAL_USER" != "$EXPECTED_USER" ]]; then
-  echo "[FAIL] Not running as $EXPECTED_USER (current: $ACTUAL_USER)"
+if [[ "$(whoami)" != "$SYSTEM_USERNAME" ]]; then
+  echo "[FAIL] Not running as $SYSTEM_USERNAME"
   exit 1
 else
-  echo "[OK] Running as correct user: $ACTUAL_USER"
+  echo "[OK] Running as correct user"
 fi
 
-# Test 2: Check passwordless sudo
 if sudo -n true 2>/dev/null; then
   echo "[OK] Passwordless sudo is configured"
 else
-  echo "[FAIL] Passwordless sudo is not working for $ACTUAL_USER"
+  echo "[FAIL] Passwordless sudo is not working"
   exit 1
 fi
 
-# Test 3: Check Podman access (improved test)
 if command -v podman &>/dev/null; then
   if podman info --log-level=error &>/dev/null; then
     echo "[OK] Podman is accessible"
   else
-    echo "[WARN] Podman is installed but returned an error"
-    echo "       Possibly not a full login shell or XDG session not active"
+    echo "[WARN] Podman returned an error"
     echo "       You can test manually with: sudo -iu $SYSTEM_USERNAME podman info"
   fi
 else
@@ -126,127 +106,20 @@ else
 fi
 
 # ===========================
-# Ensure pipx and podman-compose (install if missing)
+# Podman Stack Setup
 # ===========================
-if ! command -v podman-compose &>/dev/null; then
-  echo "[*] podman-compose not found. Attempting to install via pipx..."
-
-  if ! command -v pipx &>/dev/null; then
-    echo "[*] pipx not found, installing via apt..."
-    sudo apt-get install -y -qq pipx
-    pipx ensurepath
-  fi
-
-  export PATH="$PATH:$HOME/.local/bin"
-  echo "[*] Installing podman-compose..."
-  pipx install podman-compose
-
-  if ! command -v podman-compose &>/dev/null; then
-    echo "[FAIL] podman-compose still not available after install"
-    exit 1
-  else
-    echo "[OK] podman-compose installed successfully"
-  fi
-else
-  echo "[OK] podman-compose already installed"
-fi
+echo "[*] Handing over to podman.sh (running as $SYSTEM_USERNAME)..."
+sudo -iu "$SYSTEM_USERNAME" bash "$INSTALLER_PATH/install/scripts/podman.sh"
 
 # ===========================
-# Template Rendering
-# ===========================
-echo "[*] Rendering configuration templates..."
-
-TEMPLATE_DIR="$INSTALLER_PATH/install/config/templates/sys"
-
-declare -A TEMPLATE_TARGETS=(
-  [Caddyfile.template.json]="caddy"
-  [Corefile.template]="coredns"
-  [headscale.config.template.yaml]="headscale:config.yaml"
-  [derpmap.template.json]="headscale"
-)
-
-find "$TEMPLATE_DIR" -type f -name "*.template*" | while read -r template; do
-  filename="$(basename "$template")"
-  mapping="${TEMPLATE_TARGETS[$filename]:-misc}"
-  subdir="${mapping%%:*}"
-  override_name="${mapping#*:}"
-
-  if [[ "$mapping" == *:* && "$override_name" != "$mapping" ]]; then
-    rendered_name="$override_name"
-  else
-    rendered_name="${filename/.template/}"
-  fi
-
-  output_dir="$DATA_PATH/$subdir"
-  output_path="$output_dir/$rendered_name"
-
-  echo "[*] Rendering: $template → $output_path"
-  mkdir -p "$output_dir"
-  envsubst < "$template" > "$output_path"
-
-done
-
-# ===========================
-# Copy ztcloud-compose.yaml to sys directory
-# ===========================
-ZT_COMPOSE_SRC="$INSTALLER_PATH/install/config/ztcloud-compose.yaml"
-ZT_COMPOSE_DEST="$DATA_PATH/ztcloud-compose.yaml"
-
-if [[ -f "$ZT_COMPOSE_SRC" ]]; then
-  echo "[*] Copying compose file to sys directory..."
-  cp "$ZT_COMPOSE_SRC" "$ZT_COMPOSE_DEST"
-else
-  echo "[FAIL] Compose source file missing: $ZT_COMPOSE_SRC"
-  exit 1
-fi
-
-echo "[*] Template rendering complete ✅"
-
-# ===========================
-# Launch with Podman Compose
-# ===========================
-echo "[*] All config files found. Launching stack with Podman Compose..."
-
-# COMPOSE_FILE already set from load_config.sh
-
-if [[ ! -f "$COMPOSE_FILE" ]]; then
-  echo "[FAIL] Compose file not found at $COMPOSE_FILE"
-  exit 1
-fi
-
-# Run the stack
-podman-compose -f "$COMPOSE_FILE" up -d
-
-echo "[*] Stack launched successfully ✅"
-
-# ===========================
-# Post-launch container summary + health
-# ===========================
-echo "[+] Services running via Podman (as $SYSTEM_USERNAME):"
-sudo -iu "$SYSTEM_USERNAME" podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
-
-echo "[+] Container health status:"
-sudo -iu "$SYSTEM_USERNAME" bash -c 'podman inspect --format "{{.Name}}: {{if .State.Healthcheck}}Health={{.State.Healthcheck.Status}}{{else}}No healthcheck{{end}}" $(podman ps -q)'
-
-# ===========================
-# OS Hardening and Init Adjustments
+# OS Hardening and Init
 # ===========================
 INIT_SCRIPT="$INSTALLER_PATH/install/scripts/init.sh"
-
 if [[ -f "$INIT_SCRIPT" ]]; then
-  if [[ ! -x "$INIT_SCRIPT" ]]; then
-    echo "[WARN] Init script is not executable, fixing permissions..."
-    chmod +x "$INIT_SCRIPT"
-  fi
-  echo "[*] Running init script for OS hardening and system tweaks..."
+  chmod +x "$INIT_SCRIPT"
+  echo "[*] Running init script..."
   bash "$INIT_SCRIPT"
-  echo "[OK] Init script executed ✅"
+  echo "[OK] Init script completed"
 else
-  echo "[WARN] Init script not found at $INIT_SCRIPT — skipping OS tweaks"
+  echo "[WARN] No init.sh found — skipping"
 fi
-
-# ===========================
-# Register systemd unit
-# ===========================
-echo "[*] Setting up systemd service for ztcloud..."
-bash "$INSTALLER_PATH/install/scripts/systemd_install.sh"
