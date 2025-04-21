@@ -114,6 +114,21 @@ loginctl enable-linger "$SYSTEM_USERNAME"
 # ===========================
 systemctl enable --now podman.socket
 
+
+# ===========================
+# Adding Configuration to .env
+# ===========================
+echo "[*] Ensuring runtime config is written to $ENV_FILE"
+mkdir -p "$(dirname "$ENV_FILE")"
+cat >> "$ENV_FILE" <<EOF
+
+# Added by bootstrap.sh
+SYSTEM_USERNAME="$SYSTEM_USERNAME"
+INSTALLER_PATH="$INSTALLER_PATH"
+ZTCL_VERSION="$ZTCL_VERSION"
+ZTCL_BRANCH="$ZTCL_BRANCH"
+EOF
+
 # ===========================
 # Launch install.sh
 # ===========================
