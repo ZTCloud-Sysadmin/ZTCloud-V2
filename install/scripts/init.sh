@@ -26,21 +26,37 @@ if [ "${IS_MASTER:-false}" != "true" ]; then
 fi
 
 # ===========================
-# Headscale user and key setup
+# Create Headscale user if needed
 # ===========================
-echo "[+] Creating user '$ZTCL_NETWORK' in Headscale..."
-sudo podman exec headscale headscale users create "$ZTCL_NETWORK" || true
+if podman exec headscale headscale users list | grep -q "\"$ZTCL_NETWORK\""; then
+  echo "[~] User '$ZTCL_NETWORK' already exists in Headscale"
+else
+  echo "[+] Creating user '$ZTCL_NETWORK' in Headscale..."
+  podman exec headscale headscale users create "$ZTCL_NETWORK"
+fi
 
-echo "[+] Generating Tailscale auth key for '$ZTCL_NETWORK'..."
-AUTH_KEY=$(sudo podman exec headscale headscale preauthkeys create \
-  --reusable --expiration 168h "$ZTCL_NETWORK" | jq -r .key)
+# ===========================
+# Reuse or generate preauthkey
+# ===========================
+echo "[*] Checking for reusable auth keys..."
+EXISTING_KEY=$(podman exec headscale headscale preauthkeys list --user "$ZTCL_NETWORK" --output json \
+  | jq -r '.[] | select(.reusable == true and .expired == false) | .key' | head -n 1)
+
+if [[ -n "$EXISTING_KEY" ]]; then
+  echo "[~] Found reusable auth key for '$ZTCL_NETWORK'"
+  AUTH_KEY="$EXISTING_KEY"
+else
+  echo "[+] Generating new auth key for '$ZTCL_NETWORK'..."
+  AUTH_KEY=$(podman exec headscale headscale preauthkeys create \
+    --reusable --expiration 168h --user "$ZTCL_NETWORK" --output json | jq -r .key)
+fi
 
 # ===========================
 # Join Tailscale network
 # ===========================
 echo "[+] Running 'tailscale up'..."
 sudo tailscale up \
-  --login-server http://localhost:8080 \
+  --login-server http://localhost:6888 \
   --authkey "$AUTH_KEY" \
   --hostname "$ZTCL_NETWORK"
 

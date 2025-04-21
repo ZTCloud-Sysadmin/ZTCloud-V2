@@ -26,3 +26,8 @@ sudo -iu ztcl-sysadmin podman logs coredns
 sudo systemctl status ztcloud
 sudo -iu ztcl-sysadmin podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 ```
+
+``bash
+tailscale status
+tailscale ip -4
+```
