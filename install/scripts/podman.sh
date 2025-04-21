@@ -6,6 +6,11 @@ set -euo pipefail
 # ===========================
 source /opt/ztcl/install/scripts/load_config.sh
 
+# Load and validate ownership
+source "$INSTALLER_PATH/install/scripts/permission_check.sh"
+fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
+
+# Setup Logfile
 LOG_FILE="$INSTALLER_PATH/logs/ztcl-install.log"
 touch "$LOG_FILE"; chmod 600 "$LOG_FILE"
 

@@ -84,9 +84,17 @@ else
   echo "[*] Repo already exists at $INSTALLER_PATH — skipping clone"
 fi
 
-# Fix ownership
-echo "[*] Setting ownership of $INSTALLER_PATH"
-chown -R "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "$INSTALLER_PATH"
+# ===========================
+# Verify ownership via shared permission check
+# ===========================
+PERM_CHECK_SCRIPT="$INSTALLER_PATH/install/scripts/permission_check.sh"
+if [[ -f "$PERM_CHECK_SCRIPT" ]]; then
+  echo "[*] Running centralized permission_check.sh"
+  source "$PERM_CHECK_SCRIPT"
+  fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
+else
+  echo "[!] permission_check.sh not found — skipping ownership verification"
+fi
 
 # ===========================
 # Write config and move .env
@@ -113,6 +121,7 @@ cat > "$CONFIG_PATH" <<EOF
 INSTALLER_PATH="$INSTALLER_PATH"
 SYSTEM_USERNAME="$SYSTEM_USERNAME"
 ZTCL_VERSION="$ZTCL_VERSION"
+LOG_DIR="$INSTALLER_PATH/logs"
 EOF
 
 # ===========================

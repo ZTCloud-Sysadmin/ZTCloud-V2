@@ -24,8 +24,14 @@ sudo systemctl status ztcloud
 sudo -iu ztcl-sysadmin podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 ```
 
-``bash
+```bash
+# Load and validate ownership
+source "$INSTALLER_PATH/install/scripts/permission_check.sh"
+fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
+```
+
+```bash
 tailscale status
 tailscale ip -4
 ```
-b
+bb

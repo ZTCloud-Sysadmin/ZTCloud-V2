@@ -7,6 +7,11 @@ set -euo pipefail
 CONFIG_FILE="/opt/ztcl/sys/config/config.sh"
 ENV_FILE="/opt/ztcl/sys/config/.env"
 
+# Load and validate ownership
+source "$INSTALLER_PATH/install/scripts/permission_check.sh"
+fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
+
+
 if [[ -f "$CONFIG_FILE" ]]; then
   source "$CONFIG_FILE"
 else
