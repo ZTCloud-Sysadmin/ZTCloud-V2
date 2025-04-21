@@ -126,12 +126,13 @@ fi
 #echo "$SYSTEM_USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SYSTEM_USERNAME"
 #chmod 440 "/etc/sudoers.d/$SYSTEM_USERNAME"
 
-# Add to groups and enable passwordless sudo
+# Add to groups and enable full passwordless sudo for now
 echo "[*] Adding $SYSTEM_USERNAME to sudo and podman groups"
 usermod -aG sudo,podman "$SYSTEM_USERNAME"
 
-echo "$SYSTEM_USERNAME ALL=(ALL) NOPASSWD: /usr/bin/podman, /usr/bin/tailscale" > "/etc/sudoers.d/$SYSTEM_USERNAME"
+echo "$SYSTEM_USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SYSTEM_USERNAME"
 chmod 440 "/etc/sudoers.d/$SYSTEM_USERNAME"
+
 
 # Enable lingering for systemd user services (for rootless Podman)
 echo "[*] Enabling lingering for $SYSTEM_USERNAME"
