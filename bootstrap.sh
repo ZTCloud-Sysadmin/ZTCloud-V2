@@ -85,7 +85,7 @@ else
 fi
 
 # ===========================
-# Write config and move .env
+# Create config directory and move .env
 # ===========================
 echo "[*] Creating config directory at $CONFIG_DIR"
 mkdir -p "$CONFIG_DIR"
@@ -104,6 +104,9 @@ else
   exit 1
 fi
 
+# ===========================
+# Write config.sh
+# ===========================
 echo "[*] Writing config.sh to $CONFIG_PATH"
 cat > "$CONFIG_PATH" <<EOF
 INSTALLER_PATH="$INSTALLER_PATH"
