@@ -2,13 +2,25 @@
 set -euo pipefail
 
 # ===========================
-# Load config + .env + log path
+# Load config
 # ===========================
-source /opt/ztcl/install/scripts/load_config.sh
+CONFIG_FILE="/opt/ztcl/sys/config/config.sh"
+ENV_FILE="/opt/ztcl/sys/config/.env"
 
-LOG_FILE="$LOG_DIR/ztcl-firewall.log"
-touch "$LOG_FILE"
-chmod 600 "$LOG_FILE"
+if [[ -f "$CONFIG_FILE" ]]; then
+  source "$CONFIG_FILE"
+fi
+
+if [[ -f "$ENV_FILE" ]]; then
+  set -o allexport; source "$ENV_FILE"; set +o allexport
+fi
+
+# ===========================
+# Logging setup
+# ===========================
+LOG_FILE="$INSTALLER_PATH/logs/ztcl-firewall.log"
+mkdir -p "$(dirname "$LOG_FILE")"
+touch "$LOG_FILE"; chmod 600 "$LOG_FILE"
 
 log() {
   echo "$@"
@@ -17,20 +29,25 @@ log() {
 
 log "========================================"
 log "[+] firewall.sh STARTED"
-log "IS_MASTER: ${IS_MASTER:-}"
+log "IS_MASTER: ${IS_MASTER:-undefined}"
 log "========================================"
 
 # ===========================
-# Only apply on master node
+# Check UFW availability
 # ===========================
-if [[ "${IS_MASTER:-false}" != "true" ]]; then
-  log "[~] Not a master node — skipping UFW configuration."
-  exit 0
+if ! command -v ufw &>/dev/null; then
+  log "[!] ufw not found. Please install it using: apt install ufw"
+  exit 1
 fi
 
 # ===========================
-# Apply dynamic UFW rules
+# Apply UFW rules (only on master)
 # ===========================
+if [[ "${IS_MASTER:-false}" != "true" ]]; then
+  log "[~] Not a master node — skipping firewall config."
+  exit 0
+fi
+
 log "[*] Applying UFW firewall rules from .env..."
 
 ufw default deny incoming
