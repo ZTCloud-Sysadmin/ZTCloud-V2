@@ -34,6 +34,5 @@ fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
 tailscale status
 tailscale ip -4
 ```
-bbbbbb
-
+bbbbbbb
 ztcl-panel
