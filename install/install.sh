@@ -88,6 +88,18 @@ else
 fi
 
 # ===========================
+# Install systemd service
+# ===========================
+SYSTEMD_INSTALL_SCRIPT="$INSTALLER_PATH/install/scripts/systemd_system_pods.sh"
+if [[ -f "$SYSTEMD_INSTALL_SCRIPT" ]]; then
+  log "[*] Running systemd service installer..."
+  bash "$SYSTEMD_INSTALL_SCRIPT"
+else
+  log "[WARN] systemd_install.sh not found — skipping systemd setup"
+fi
+
+
+# ===========================
 # Configure ZTCL Mesh
 # ===========================
 ZTCL_MESH_SCRIPT="$INSTALLER_PATH/install/scripts/ztcl_mesh.sh"

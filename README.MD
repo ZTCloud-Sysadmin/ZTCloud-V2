@@ -34,5 +34,10 @@ fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
 tailscale status
 tailscale ip -4
 ```
-bbbbbbb
-ztcl-panel
+c
+
+
+
+# Bin
+./ztcl-status.sh
+./ztcl-status.sh --json
