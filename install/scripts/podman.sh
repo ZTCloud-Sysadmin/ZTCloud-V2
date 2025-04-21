@@ -104,4 +104,4 @@ podman inspect --format '{{.Name}}: {{if .State.Healthcheck}}Health={{.State.Hea
 # Register systemd unit
 # ===========================
 echo "[*] Setting up systemd unit for stack..."
-bash "$INSTALLER_PATH/install/scripts/systemd_install.sh"
+bash "$INSTALLER_PATH/install/scripts/podman_systemd.sh"

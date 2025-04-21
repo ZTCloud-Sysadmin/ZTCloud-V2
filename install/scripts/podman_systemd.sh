@@ -17,18 +17,23 @@ if [[ ! -x "$PODMAN_COMPOSE_PATH" ]]; then
   exit 1
 fi
 
+# Ensure .env is available next to the compose file (for podman-compose)
+echo "[*] Linking .env for podman-compose compatibility..."
+ln -sf /opt/ztcl/sys/config/.env /opt/ztcl/sys/.env
+
 echo "[*] Creating systemd service: $SERVICE_NAME"
 
 cat <<EOF | sudo tee "$SYSTEMD_UNIT_FILE" > /dev/null
 [Unit]
 Description=ZTCloud Compose Stack
-After=network.target
+After=network-online.target podman.socket
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=$SYSTEM_USERNAME
 WorkingDirectory=$WORKING_DIR
-ExecStart=/bin/bash -lc "sleep 20 && $PODMAN_COMPOSE_PATH -f $COMPOSE_FILE up"
+ExecStart=/bin/bash -lc "sleep 30 && $PODMAN_COMPOSE_PATH -f $COMPOSE_FILE up"
 ExecStop=/bin/bash -lc "$PODMAN_COMPOSE_PATH -f $COMPOSE_FILE down"
 Restart=always
 Environment="PATH=/home/$SYSTEM_USERNAME/.local/bin:/usr/local/bin:/usr/bin:/bin"
