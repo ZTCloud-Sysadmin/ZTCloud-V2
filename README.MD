@@ -28,4 +28,3 @@ sudo -iu ztcl-sysadmin podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Stat
 tailscale status
 tailscale ip -4
 ```
-kkkkk
