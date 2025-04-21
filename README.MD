@@ -7,10 +7,6 @@ bash <(wget -qO- https://raw.githubusercontent.com/ZTCloud-Sysadmin/ztcl/refs/he
 ```
 
 ```bash
-bash <(wget -qO- https://raw.githubusercontent.com/ZTCloud-Sysadmin/ztcl/refs/heads/main/bootstrap.sh) --skipconfig --yes
-```
-
-```bash
 sudo -iu ztcl-sysadmin podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 ```
 
@@ -32,4 +28,4 @@ sudo -iu ztcl-sysadmin podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Stat
 tailscale status
 tailscale ip -4
 ```
-kk
+kkk

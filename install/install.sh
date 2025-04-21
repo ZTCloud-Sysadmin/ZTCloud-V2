@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ===========================
-# Load config + env + ensure logs
+# Load config and setup logging
 # ===========================
 source /opt/ztcl/install/scripts/load_config.sh
 
@@ -52,13 +52,13 @@ else
 fi
 
 # ===========================
-# Ensure correct ownership before continuing
+# Ensure correct ownership
 # ===========================
 log "[*] Ensuring ownership of $INSTALLER_PATH..."
 sudo chown -R "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "$INSTALLER_PATH"
 
 # ===========================
-# Check correct user
+# Switch to correct user if needed
 # ===========================
 CURRENT_USER="$(whoami)"
 if [[ "$CURRENT_USER" != "$SYSTEM_USERNAME" ]]; then
@@ -67,7 +67,7 @@ if [[ "$CURRENT_USER" != "$SYSTEM_USERNAME" ]]; then
 fi
 
 # ===========================
-# Configure unprivileged port access
+# Configure port access
 # ===========================
 log "[*] Configuring unprivileged port access..."
 
@@ -92,20 +92,20 @@ fi
 # ===========================
 log "[*] Running self-tests..."
 
-[[ "$(whoami)" == "$SYSTEM_USERNAME" ]] || { log "[FAIL] Wrong user"; exit 1; }
+[[ "$(whoami)" == "$SYSTEM_USERNAME" ]] || { log "[FAIL] Not running as $SYSTEM_USERNAME"; exit 1; }
 log "[OK] Running as correct user"
 
 if sudo -n true 2>/dev/null; then
   log "[OK] Passwordless sudo working"
 else
-  log "[FAIL] Passwordless sudo not available"
+  log "[FAIL] Passwordless sudo is not configured"
   exit 1
 fi
 
 if command -v podman &>/dev/null && podman info --log-level=error &>/dev/null; then
   log "[OK] Podman is accessible"
 else
-  log "[WARN] Podman installed but not responding properly"
+  log "[WARN] Podman is installed but may not be functional"
 fi
 
 # ===========================
@@ -120,14 +120,14 @@ if ! command -v podman-compose &>/dev/null; then
   export PATH="$PATH:$HOME/.local/bin"
   pipx install podman-compose || true
   if ! command -v podman-compose &>/dev/null; then
-    log "[FAIL] podman-compose still not found after install"
+    log "[FAIL] podman-compose still not available after install"
     exit 1
   fi
 fi
 log "[OK] podman-compose is available"
 
 # ===========================
-# Render templates
+# Render configuration templates
 # ===========================
 log "[*] Rendering configuration templates..."
 
@@ -150,6 +150,24 @@ find "$TEMPLATE_DIR" -type f -name "*.template*" | while read -r template; do
   output_path="$output_dir/$rendered_name"
   log "[*] Rendering: $template → $output_path"
   envsubst < "$template" > "$output_path"
+done
+
+# ===========================
+# Ensure volume directories exist
+# ===========================
+log "[*] Ensuring container volume directories..."
+
+VOLUME_DIRS=(
+  "$DATA_PATH/headscale"
+  "$DATA_PATH/etcd"
+  "$DATA_PATH/coredns"
+  "$DATA_PATH/caddy"
+  "$DATA_PATH/ztcl-panel/config"
+)
+
+for dir in "${VOLUME_DIRS[@]}"; do
+  mkdir -p "$dir"
+  log "[+] Ensured directory: $dir"
 done
 
 # ===========================
@@ -186,14 +204,14 @@ FIREWALL_SCRIPT="$INSTALLER_PATH/install/scripts/firewall.sh"
 [[ -f "$FIREWALL_SCRIPT" ]] && log "[*] Running firewall script..." && bash "$FIREWALL_SCRIPT" && log "[✓] Firewall applied"
 
 # ===========================
-# Final cleanup (if FINAL_CHECK enabled)
+# Final cleanup (if enabled)
 # ===========================
 if [[ "${FINAL_CHECK:-false}" == "true" ]]; then
   log "[✓] FINAL_CHECK=true — cleaning up install directory"
   rm -rf "$INSTALLER_PATH/install"
   log "[✓] Removed: $INSTALLER_PATH/install"
 else
-  log "[!] FINAL_CHECK=false — keeping installer directory for debugging"
+  log "[!] FINAL_CHECK=false — keeping installer directory"
 fi
 
 log "========================================"
