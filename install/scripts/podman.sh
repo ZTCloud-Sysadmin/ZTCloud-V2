@@ -9,6 +9,7 @@ source /opt/ztcl/install/scripts/load_config.sh
 # Load and validate ownership
 source "$INSTALLER_PATH/install/scripts/permission_check.sh"
 fix_ownership_if_needed "$INSTALLER_PATH" "$SYSTEM_USERNAME"
+ensure_podman_runtime_dir
 
 # Setup Logfile
 LOG_FILE="$INSTALLER_PATH/logs/ztcl-install.log"

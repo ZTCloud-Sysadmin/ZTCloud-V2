@@ -1,117 +1,132 @@
 #!/bin/bash
 set -euo pipefail
 
-ZTCL_SYS="/opt/ztcl/sys"
-COMPOSE_FILE="$ZTCL_SYS/ztcloud-compose.yaml"
-RESOLVED_FILE="$ZTCL_SYS/ztcloud-compose.resolved.yaml"
-ENV_FILE="$ZTCL_SYS/config/.env"
-EXPECTED_USER="ztcl-sysadmin"
-MODE="${1:-text}"  # Use --json to output machine-readable format
+# ===========================
+# Load config and env
+# ===========================
+CONFIG_FILE="/opt/ztcl/sys/config/config.sh"
+ENV_FILE="/opt/ztcl/sys/config/.env"
 
-output_json() {
-  jq -n \
-    --arg ts_ip "$(tailscale ip -4 2>/dev/null || echo "null")" \
-    --arg service_status "$(systemctl is-active ztcloud.service || echo "inactive")" \
-    --arg resolved_file "$([[ -f "$RESOLVED_FILE" ]] && echo "true" || echo "false")" \
-    --arg compose_file "$([[ -f "$COMPOSE_FILE" ]] && echo "true" || echo "false")" \
-    --arg user_exists "$([[ $(id -u "$EXPECTED_USER" 2>/dev/null || echo "") != "" ]] && echo "true" || echo "false")" \
-    --arg sudoers_file "$([[ -f /etc/sudoers.d/$EXPECTED_USER ]] && grep -q "$EXPECTED_USER ALL=(ALL) NOPASSWD:ALL" /etc/sudoers.d/$EXPECTED_USER && echo "true" || echo "false")" \
-    --arg linger "$([[ $(loginctl show-user "$EXPECTED_USER" --property=Linger 2>/dev/null || echo "") == *"yes"* ]] && echo "true" || echo "false")" \
-    --argjson containers "$(podman ps --format '{{json .}}' | jq -s .)" \
-    --argjson health "$(podman ps -q | xargs -I {} podman inspect --format '{ "name": "{{.Name}}", "health": "{{if .State.Healthcheck}}{{.State.Healthcheck.Status}}{{else}}none{{end}}" }' {} | jq -s .)" \
-    '{
-      tailscale_ip: $ts_ip,
-      service_status: $service_status,
-      compose_file_present: $compose_file,
-      resolved_compose_present: $resolved_file,
-      user: {
-        name: $EXPECTED_USER,
-        exists: $user_exists,
-        sudoers_passwordless: $sudoers_file,
-        lingering: $linger
-      },
-      containers: $containers,
-      health: $health
-    }'
-}
-
-output_text() {
-  echo "========================================"
-  echo "[ZTCL STATUS CHECK]"
-  echo "========================================"
-
-  echo -n "[+] Tailscale IP: "
-  tailscale ip -4 2>/dev/null || echo "Not connected"
-
-  echo -n "[+] systemd service status: "
-  systemctl is-active ztcloud.service || echo "inactive"
-
-  echo "[+] Running containers:"
-  podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" || echo "[!] Podman not running?"
-
-  echo "[+] Container health checks:"
-  podman ps -q | while read -r cid; do
-    name=$(podman inspect --format "{{.Name}}" "$cid" | sed 's/^\///')
-    health=$(podman inspect --format '{{if .State.Healthcheck}}Health={{.State.Healthcheck.Status}}{{else}}No healthcheck{{end}}' "$cid")
-    echo "$name: $health"
-  done
-
-  echo "[+] Compose file: $COMPOSE_FILE"
-  [[ -f "$COMPOSE_FILE" ]] && echo "    ✅ Found" || echo "    ❌ Missing"
-
-  echo "[+] Resolved compose: $RESOLVED_FILE"
-  [[ -f "$RESOLVED_FILE" ]] && echo "    ✅ Found" || echo "    ❌ Missing"
-
-  echo "[+] UFW firewall status:"
-  if command -v ufw &>/dev/null; then
-    sudo ufw status numbered || echo "[!] UFW appears to be disabled"
-  else
-    echo "[!] ufw command not found"
-  fi
-
-  echo "[+] Expected open ports from .env:"
-  if [[ -f "$ENV_FILE" ]]; then
-    source "$ENV_FILE"
-    echo "    SSH: 22/tcp"
-    echo "    Headscale HTTP: ${HEADSCALE_HTTP_PORT:-6888}/tcp"
-    echo "    STUN: ${HEADSCALE_STUN_PORT:-3478}/udp"
-    echo "    DERP/Caddy HTTPS: ${DERP_PORT:-443}/tcp"
-    echo "    DNS TCP: ${COREDNS_TCP_PORT:-53}/tcp"
-    echo "    DNS UDP: ${COREDNS_UDP_PORT:-53}/udp"
-  else
-    echo "[!] Missing .env at $ENV_FILE — cannot check expected ports"
-  fi
-
-  echo "[+] System user and permissions:"
-  if id "$EXPECTED_USER" &>/dev/null; then
-    echo "    ✅ User exists: $EXPECTED_USER"
-  else
-    echo "    ❌ User missing: $EXPECTED_USER"
-  fi
-
-  GROUPS=$(id -nG "$EXPECTED_USER" 2>/dev/null || echo "")
-  [[ "$GROUPS" == *"sudo"* ]] && echo "    ✅ User in group: sudo" || echo "    ❌ Not in group: sudo"
-  [[ "$GROUPS" == *"podman"* ]] && echo "    ✅ User in group: podman" || echo "    ❌ Not in group: podman"
-
-  SUDOERS_FILE="/etc/sudoers.d/$EXPECTED_USER"
-  if [[ -f "$SUDOERS_FILE" ]] && grep -q "$EXPECTED_USER ALL=(ALL) NOPASSWD:ALL" "$SUDOERS_FILE"; then
-    echo "    ✅ Passwordless sudo configured"
-  else
-    echo "    ❌ Passwordless sudo not set or missing"
-  fi
-
-  if loginctl show-user "$EXPECTED_USER" --property=Linger | grep -q yes; then
-    echo "    ✅ Lingering enabled"
-  else
-    echo "    ❌ Lingering not enabled"
-  fi
-
-  echo "========================================"
-}
-
-# Main dispatcher
-if [[ "$MODE" == "--json" ]]; then
-  output_json
+if [[ -f "$CONFIG_FILE" ]]; then
+  source "$CONFIG_FILE"
 else
-  output_text
+  echo "[!] Missing config.sh"
+  exit 1
 fi
+
+if [[ -f "$ENV_FILE" ]]; then
+  set -o allexport; source "$ENV_FILE"; set +o allexport
+else
+  echo "[!] Missing .env"
+  exit 1
+fi
+
+# ===========================
+# Flags
+# ===========================
+JSON=false
+SHOW_USER=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --json) JSON=true ;;
+    --user) SHOW_USER=true ;;
+  esac
+done
+
+# ===========================
+# Utilities
+# ===========================
+run_user_cmd() {
+  if [[ "$SHOW_USER" == "true" ]]; then
+    sudo -iu "$SYSTEM_USERNAME" bash -c "$*"
+  else
+    bash -c "$*"
+  fi
+}
+
+# ===========================
+# Tailscale status
+# ===========================
+TSC_IP="$(tailscale ip -4 2>/dev/null || echo "Not connected")"
+
+# ===========================
+# Systemd service status
+# ===========================
+SERVICE_STATUS="$(systemctl is-active ztcloud || echo "inactive")"
+
+# ===========================
+# Compose files
+# ===========================
+COMPOSE_FILE="$INSTALLER_PATH/sys/ztcloud-compose.yaml"
+RESOLVED_FILE="$INSTALLER_PATH/sys/ztcloud-compose.resolved.yaml"
+
+# ===========================
+# UFW firewall
+# ===========================
+UFW_STATUS="$(ufw status | head -n1 || echo "unknown")"
+
+# ===========================
+# JSON output block
+# ===========================
+if [[ "$JSON" == "true" ]]; then
+  CONTAINERS_JSON=$(run_user_cmd "podman ps --format '{{json .}}'" | jq -s '.' || echo '[]')
+  HEALTH_JSON=$(run_user_cmd 'bash -c '\''podman inspect --format "{\"name\":\"{{.Name}}\",\"health\":\"{{if .State.Healthcheck}}{{.State.Healthcheck.Status}}{{else}}no-healthcheck{{end}}\"}" $(podman ps -q)'\'' | jq -s '.' || echo '[]')
+
+  jq -n \
+    --arg tailscale "$TSC_IP" \
+    --arg status "$SERVICE_STATUS" \
+    --arg compose "$COMPOSE_FILE" \
+    --arg resolved "$RESOLVED_FILE" \
+    --arg user "$SYSTEM_USERNAME" \
+    --arg firewall "$UFW_STATUS" \
+    --argjson containers "$CONTAINERS_JSON" \
+    --argjson health "$HEALTH_JSON" \
+    '{
+      tailscale_ip: $tailscale,
+      systemd_status: $status,
+      compose_file: { path: $compose, exists: (test("^/") and ($compose | length > 0)) },
+      resolved_compose: { path: $resolved, exists: (test("^/") and ($resolved | length > 0)) },
+      system_user: $user,
+      ufw_status: $firewall,
+      containers: $containers,
+      container_health: $health
+    }'
+  exit 0
+fi
+
+# ===========================
+# Human-readable output
+# ===========================
+echo "========================================"
+echo "[ZTCL STATUS CHECK]"
+echo "========================================"
+echo "[+] Tailscale IP: $TSC_IP"
+echo "[+] systemd service status: $SERVICE_STATUS"
+
+echo "[+] Running containers:"
+run_user_cmd 'podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"'
+
+echo "[+] Container health checks:"
+run_user_cmd 'podman inspect --format "{{.Name}}: {{if .State.Healthcheck}}{{.State.Healthcheck.Status}}{{else}}no-healthcheck{{end}}" $(podman ps -q)'
+
+echo "[+] Compose file: $COMPOSE_FILE"
+[[ -f "$COMPOSE_FILE" ]] && echo "    ✅ Found" || echo "    ❌ Missing"
+
+echo "[+] Resolved compose: $RESOLVED_FILE"
+[[ -f "$RESOLVED_FILE" ]] && echo "    ✅ Found" || echo "    ❌ Missing"
+
+echo "[+] UFW firewall status:"
+ufw status
+
+echo
+echo "[+] Expected open ports from .env:"
+echo "    SSH: 22/tcp"
+echo "    Headscale HTTP: $HEADSCALE_HTTP_PORT/tcp"
+echo "    STUN: $HEADSCALE_STUN_PORT/udp"
+echo "    DERP/Caddy HTTPS: $CADDY_HTTPS_PORT/tcp"
+echo "    DNS TCP: $COREDNS_TCP_PORT/tcp"
+echo "    DNS UDP: $COREDNS_UDP_PORT/udp"
+
+echo "[+] System user and permissions:"
+id "$SYSTEM_USERNAME" &>/dev/null && echo "    ✅ User exists: $SYSTEM_USERNAME" || echo "    ❌ User missing"

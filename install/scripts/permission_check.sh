@@ -70,3 +70,23 @@ ensure_user_path() {
     log "[~] PATH already configured in $profile"
   fi
 }
+
+# ===========================
+# Ensure Podman runtime directory
+# ===========================
+ensure_podman_runtime_dir() {
+  local uid
+  uid=$(id -u "$SYSTEM_USERNAME")
+  local run_dir="/run/user/$uid"
+
+  if [[ ! -d "$run_dir" ]]; then
+    log "[*] Creating Podman runtime directory: $run_dir"
+    sudo mkdir -p "$run_dir"
+    sudo chown "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "$run_dir"
+    sudo chmod 700 "$run_dir"
+    log "[✓] Created and secured: $run_dir"
+  else
+    log "[✓] Podman runtime directory exists: $run_dir"
+  fi
+}
+
