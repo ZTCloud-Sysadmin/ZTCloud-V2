@@ -34,6 +34,16 @@ fi
 tailscaled --version && echo "[*] Tailscale installed successfully"
 
 # ===========================
+# Ensure podman group exists
+# ===========================
+if ! getent group podman > /dev/null; then
+  echo "[*] Creating 'podman' group"
+  groupadd podman
+else
+  echo "[*] Group 'podman' already exists"
+fi
+
+# ===========================
 # Create system user
 # ===========================
 if ! id "$SYSTEM_USERNAME" &>/dev/null; then
