@@ -17,7 +17,7 @@ fi
 # Ensure required system packages
 echo "[*] Installing required packages"
 apt-get update -qq
-apt-get install -y -qq curl sudo podman jq gettext-base git dbus-x11 uwf
+apt-get install -y -qq curl sudo podman jq gettext-base git dbus-x11 ufw
 
 # Install Tailscale
 echo "[*] Installing Tailscale (from bootstrap.sh script)"
