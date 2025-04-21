@@ -180,7 +180,7 @@ DEST_COMPOSE="$DATA_PATH/ztcloud-compose.yaml"
 cp "$ZT_COMPOSE" "$DEST_COMPOSE"
 
 log "[*] Launching stack with podman-compose..."
-sudo -iu "$SYSTEM_USERNAME" podman-compose -f "$DEST_COMPOSE" up -d
+sudo -iu "$SYSTEM_USERNAME" env $(grep -v '^#' "$ENV_FILE" | xargs) podman-compose -f "$DEST_COMPOSE" up -d
 log "[✓] Stack launched successfully"
 
 # ===========================
