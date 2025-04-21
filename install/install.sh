@@ -153,6 +153,19 @@ find "$TEMPLATE_DIR" -type f -name "*.template*" | while read -r template; do
 done
 
 # ===========================
+# Copy .env to sys/config for post-install use
+# ===========================
+ENV_SOURCE="$INSTALLER_PATH/install/config/.env"
+ENV_DEST="$INSTALLER_PATH/sys/config/.env"
+
+if [[ -f "$ENV_SOURCE" ]]; then
+  cp "$ENV_SOURCE" "$ENV_DEST"
+  log "[✓] Copied .env to $ENV_DEST"
+else
+  log "[WARN] .env not found at $ENV_SOURCE — skipped copy"
+fi
+
+# ===========================
 # Ensure volume directories exist
 # ===========================
 log "[*] Ensuring container volume directories..."
@@ -182,6 +195,27 @@ cp "$ZT_COMPOSE" "$DEST_COMPOSE"
 log "[*] Launching stack with podman-compose..."
 sudo -iu "$SYSTEM_USERNAME" env $(grep -v '^#' "$ENV_FILE" | xargs) podman-compose -f "$DEST_COMPOSE" up -d
 log "[✓] Stack launched successfully"
+
+# ===========================
+# Save resolved compose config for debugging
+# ===========================
+RESOLVED_COMPOSE="$DATA_PATH/ztcloud-compose.resolved.yaml"
+
+log "[*] Saving resolved podman-compose config to: $RESOLVED_COMPOSE"
+
+sudo -iu "$SYSTEM_USERNAME" env $(grep -v '^#' "$ENV_FILE" | xargs) \
+  podman-compose -f "$DEST_COMPOSE" config > "$RESOLVED_COMPOSE" 2>> "$LOG_FILE" || {
+    log "[WARN] Failed to write resolved compose file to $RESOLVED_COMPOSE"
+}
+
+# ===========================
+# Log rendered podman-compose config
+# ===========================
+log "[*] Dumping resolved podman-compose config for audit..."
+
+sudo -iu "$SYSTEM_USERNAME" env $(grep -v '^#' "$ENV_FILE" | xargs) \
+  podman-compose -f "$DEST_COMPOSE" config >> "$LOG_FILE" 2>&1 || \
+  log "[WARN] Failed to render compose config for log"
 
 # ===========================
 # Post-launch container status

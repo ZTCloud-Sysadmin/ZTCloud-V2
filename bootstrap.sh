@@ -14,7 +14,7 @@ PERMANENT_ENV_PATH="$CONFIG_DIR/.env"
 CLONE_URL="https://github.com/ZTCloud-Sysadmin/ZTCloud-V2.git"
 
 # ===========================
-# Install required system packages
+# Install required packages
 # ===========================
 echo "[*] Installing required packages..."
 apt-get update -qq
@@ -53,19 +53,19 @@ else
   echo "[*] User $SYSTEM_USERNAME already exists"
 fi
 
-# Add to groups and enable passwordless sudo
+# Add user to groups + sudoers
 echo "[*] Adding $SYSTEM_USERNAME to sudo and podman groups"
 usermod -aG sudo,podman "$SYSTEM_USERNAME"
 echo "$SYSTEM_USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SYSTEM_USERNAME"
 chmod 440 "/etc/sudoers.d/$SYSTEM_USERNAME"
 
-# Ensure pipx path available
-echo "[*] Ensuring PATH in user profile"
+# Ensure pipx path is in user profile
+echo "[*] Updating $SYSTEM_USERNAME profile PATH"
 echo 'export PATH="$PATH:/usr/local/bin:/root/.local/bin:$PATH"' >> "/home/$SYSTEM_USERNAME/.profile"
 chown "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "/home/$SYSTEM_USERNAME/.profile"
 
 # ===========================
-# Clone repo
+# Clone ZTCL repository
 # ===========================
 if [[ ! -d "$INSTALLER_PATH/.git" ]]; then
   echo "[*] Cloning ZTCL repo (branch: $ZTCL_BRANCH) to $INSTALLER_PATH"
@@ -74,26 +74,31 @@ else
   echo "[*] Repo already exists at $INSTALLER_PATH — skipping clone"
 fi
 
-# Fix ownership for everything
-echo "[*] Setting ownership of $INSTALLER_PATH to $SYSTEM_USERNAME"
+# Fix ownership
+echo "[*] Setting ownership of $INSTALLER_PATH"
 chown -R "$SYSTEM_USERNAME:$SYSTEM_USERNAME" "$INSTALLER_PATH"
 
 # ===========================
-# Write config + copy .env
+# Write config and move .env
 # ===========================
 echo "[*] Creating config directory at $CONFIG_DIR"
 mkdir -p "$CONFIG_DIR"
 
 ENV_FILE="$INSTALLER_PATH/install/config/.env"
 if [[ -f "$ENV_FILE" ]]; then
-  echo "[*] Moving .env to $PERMANENT_ENV_PATH"
-  cp "$ENV_FILE" "$PERMANENT_ENV_PATH"
+  if [[ -f "$PERMANENT_ENV_PATH" ]]; then
+    echo "[!] WARNING: .env already exists at $PERMANENT_ENV_PATH — skipping move"
+    echo "[!] Using existing .env — delete manually to replace"
+  else
+    echo "[*] Moving .env to $PERMANENT_ENV_PATH"
+    mv "$ENV_FILE" "$PERMANENT_ENV_PATH"
+  fi
 else
   echo "[!] .env not found at $ENV_FILE — aborting"
   exit 1
 fi
 
-echo "[*] Writing config to $CONFIG_PATH"
+echo "[*] Writing config.sh to $CONFIG_PATH"
 cat > "$CONFIG_PATH" <<EOF
 INSTALLER_PATH="$INSTALLER_PATH"
 SYSTEM_USERNAME="$SYSTEM_USERNAME"
@@ -101,7 +106,7 @@ ZTCL_VERSION="$ZTCL_VERSION"
 EOF
 
 # ===========================
-# Enable Podman + lingering
+# Enable lingering + podman socket
 # ===========================
 echo "[*] Enabling lingering for $SYSTEM_USERNAME"
 loginctl enable-linger "$SYSTEM_USERNAME"
